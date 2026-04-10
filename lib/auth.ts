@@ -18,7 +18,10 @@ export async function getAppUser(userId: string): Promise<AppUser | null> {
     .select('*')
     .eq('id', userId)
     .single();
-  if (error) return null;
+  if (error) {
+    if (error.code === 'PGRST116') return null; // row not found — user has no profile yet
+    throw error; // surface unexpected errors (network, RLS, etc.)
+  }
   return data as AppUser;
 }
 
@@ -29,11 +32,12 @@ export async function logActivity(
   entityType?: string,
   entityId?: string
 ) {
-  await supabase.from('activity_log').insert({
+  const { error } = await supabase.from('activity_log').insert({
     bar_id: barId,
     user_id: userId,
     action,
     entity_type: entityType ?? null,
     entity_id: entityId ?? null,
   });
+  if (error) throw error;
 }

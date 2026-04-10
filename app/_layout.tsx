@@ -11,14 +11,6 @@ export default function RootLayout() {
   const segments = useSegments();
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const appUser = await getAppUser(session.user.id);
-        setUser(appUser);
-      }
-      setLoading(false);
-    });
-
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         const appUser = await getAppUser(session.user.id);
@@ -26,6 +18,7 @@ export default function RootLayout() {
       } else {
         setUser(null);
       }
+      setLoading(false);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -38,7 +31,9 @@ export default function RootLayout() {
     } else if (user && inAuthGroup) {
       router.replace('/(app)');
     }
-  }, [user, loading, segments]);
+  }, [user, loading, segments, router]);
+
+  if (loading) return null;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
