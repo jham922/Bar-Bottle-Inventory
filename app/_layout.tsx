@@ -13,8 +13,13 @@ export default function RootLayout() {
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        const appUser = await getAppUser(session.user.id);
-        setUser(appUser);
+        try {
+          const appUser = await getAppUser(session.user.id);
+          setUser(appUser);
+        } catch (err) {
+          console.error('Failed to load user profile:', err);
+          setUser(null);
+        }
       } else {
         setUser(null);
       }
