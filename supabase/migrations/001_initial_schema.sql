@@ -5,16 +5,16 @@ create extension if not exists "uuid-ossp";
 create table bar (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- Users (extends Supabase auth.users)
 create table users (
   id uuid primary key references auth.users(id) on delete cascade,
-  bar_id uuid references bar(id) on delete cascade,
+  bar_id uuid not null references bar(id) on delete cascade,
   display_name text not null,
   role text not null check (role in ('admin', 'staff')),
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- Bottles catalog
@@ -25,7 +25,7 @@ create table bottles (
   spirit_type text not null,
   total_volume_ml numeric not null,
   bottle_image_ref text,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- Inventory scans
@@ -36,7 +36,7 @@ create table inventory_scans (
   volume_remaining_ml numeric not null,
   scan_image_url text,
   scanned_by uuid not null references users(id),
-  scanned_at timestamptz default now()
+  scanned_at timestamptz not null default now()
 );
 
 -- Alerts
@@ -44,7 +44,7 @@ create table alerts (
   id uuid primary key default uuid_generate_v4(),
   bottle_id uuid not null references bottles(id) on delete cascade,
   threshold_ml numeric not null,
-  triggered_at timestamptz default now(),
+  triggered_at timestamptz not null default now(),
   resolved_at timestamptz
 );
 
@@ -54,7 +54,7 @@ create table recipes (
   bar_id uuid not null references bar(id) on delete cascade,
   name text not null,
   toast_menu_item_name text,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- Recipe ingredients
@@ -74,7 +74,7 @@ create table toast_uploads (
   uploaded_by uuid not null references users(id),
   date_range_start date not null,
   date_range_end date not null,
-  uploaded_at timestamptz default now()
+  uploaded_at timestamptz not null default now()
 );
 
 -- Toast sales
@@ -94,7 +94,7 @@ create table activity_log (
   action text not null,
   entity_type text,
   entity_id uuid,
-  created_at timestamptz default now()
+  created_at timestamptz not null default now()
 );
 
 -- Pending invites
@@ -127,14 +127,18 @@ alter table invites enable row level security;
 
 -- Helper: get current user's bar_id
 create or replace function current_bar_id()
-returns uuid language sql security definer stable as $$
-  select bar_id from users where id = auth.uid();
+returns uuid language sql security definer stable
+set search_path = public, auth
+as $$
+  select bar_id from public.users where id = auth.uid();
 $$;
 
 -- Helper: get current user's role
 create or replace function current_user_role()
-returns text language sql security definer stable as $$
-  select role from users where id = auth.uid();
+returns text language sql security definer stable
+set search_path = public, auth
+as $$
+  select role from public.users where id = auth.uid();
 $$;
 
 -- bar: users can read their own bar
@@ -167,9 +171,11 @@ create policy "scans: any insert" on inventory_scans for insert
 create policy "alerts: read same bar" on alerts for select
   using (bottle_id in (select id from bottles where bar_id = current_bar_id()));
 create policy "alerts: admin write" on alerts for insert
-  with check (current_user_role() = 'admin');
+  with check (current_user_role() = 'admin'
+    and bottle_id in (select id from bottles where bar_id = current_bar_id()));
 create policy "alerts: admin update" on alerts for update
-  using (current_user_role() = 'admin');
+  using (current_user_role() = 'admin'
+    and bottle_id in (select id from bottles where bar_id = current_bar_id()));
 
 -- recipes: all read, admin write
 create policy "recipes: read same bar" on recipes for select
@@ -185,16 +191,32 @@ create policy "recipes: admin delete" on recipes for delete
 create policy "recipe_ingredients: read" on recipe_ingredients for select
   using (recipe_id in (select id from recipes where bar_id = current_bar_id()));
 create policy "recipe_ingredients: admin write" on recipe_ingredients for insert
-  with check (current_user_role() = 'admin');
+  with check (current_user_role() = 'admin'
+    and recipe_id in (select id from recipes where bar_id = current_bar_id()));
 create policy "recipe_ingredients: admin update" on recipe_ingredients for update
-  using (current_user_role() = 'admin');
+  using (current_user_role() = 'admin'
+    and recipe_id in (select id from recipes where bar_id = current_bar_id()));
 create policy "recipe_ingredients: admin delete" on recipe_ingredients for delete
-  using (current_user_role() = 'admin');
+  using (current_user_role() = 'admin'
+    and recipe_id in (select id from recipes where bar_id = current_bar_id()));
 
 -- toast_uploads / toast_sales: admin only
-create policy "toast_uploads: admin" on toast_uploads for all
+create policy "toast_uploads: admin read" on toast_uploads for select
   using (current_user_role() = 'admin' and bar_id = current_bar_id());
-create policy "toast_sales: admin" on toast_sales for all
+create policy "toast_uploads: admin insert" on toast_uploads for insert
+  with check (current_user_role() = 'admin' and bar_id = current_bar_id() and uploaded_by = auth.uid());
+create policy "toast_uploads: admin update" on toast_uploads for update
+  using (current_user_role() = 'admin' and bar_id = current_bar_id());
+create policy "toast_uploads: admin delete" on toast_uploads for delete
+  using (current_user_role() = 'admin' and bar_id = current_bar_id());
+
+create policy "toast_sales: admin read" on toast_sales for select
+  using (upload_id in (select id from toast_uploads where bar_id = current_bar_id()) and current_user_role() = 'admin');
+create policy "toast_sales: admin insert" on toast_sales for insert
+  with check (upload_id in (select id from toast_uploads where bar_id = current_bar_id()) and current_user_role() = 'admin');
+create policy "toast_sales: admin update" on toast_sales for update
+  using (upload_id in (select id from toast_uploads where bar_id = current_bar_id()) and current_user_role() = 'admin');
+create policy "toast_sales: admin delete" on toast_sales for delete
   using (upload_id in (select id from toast_uploads where bar_id = current_bar_id()) and current_user_role() = 'admin');
 
 -- activity_log: admin read, any insert
@@ -204,5 +226,11 @@ create policy "activity_log: any insert" on activity_log for insert
   with check (bar_id = current_bar_id());
 
 -- invites: admin manage
-create policy "invites: admin" on invites for all
+create policy "invites: admin read" on invites for select
+  using (current_user_role() = 'admin' and bar_id = current_bar_id());
+create policy "invites: admin insert" on invites for insert
+  with check (current_user_role() = 'admin' and bar_id = current_bar_id() and invited_by = auth.uid());
+create policy "invites: admin update" on invites for update
+  using (current_user_role() = 'admin' and bar_id = current_bar_id());
+create policy "invites: admin delete" on invites for delete
   using (current_user_role() = 'admin' and bar_id = current_bar_id());
