@@ -26,8 +26,12 @@ export default function TeamScreen() {
       {
         text: 'Confirm',
         onPress: async () => {
-          await updateUserRole(member.id, newRole);
-          setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: newRole } : m));
+          try {
+            await updateUserRole(member.id, newRole);
+            setMembers(prev => prev.map(m => m.id === member.id ? { ...m, role: newRole } : m));
+          } catch (e: any) {
+            Alert.alert('Error', e.message ?? 'Failed to update role.');
+          }
         },
       },
     ]);
@@ -41,8 +45,12 @@ export default function TeamScreen() {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
-          await removeUser(member.id);
-          setMembers(prev => prev.filter(m => m.id !== member.id));
+          try {
+            await removeUser(member.id);
+            setMembers(prev => prev.filter(m => m.id !== member.id));
+          } catch (e: any) {
+            Alert.alert('Error', e.message ?? 'Failed to remove member.');
+          }
         },
       },
     ]);

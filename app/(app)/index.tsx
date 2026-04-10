@@ -10,16 +10,23 @@ interface DashboardStats {
   lowStockCount: number;
   spiritTypeCount: number;
   lastScanAt: string | null;
+  barName: string;
 }
 
 async function getDashboardStats(barId: string): Promise<DashboardStats> {
-  const [bottlesRes, alertsRes, scansRes] = await Promise.all([
+  const [bottlesRes, alertsRes, scansRes, barRes] = await Promise.all([
     supabase.from('bottles').select('id, spirit_type').eq('bar_id', barId),
-    supabase.from('alerts').select('id', { count: 'exact' }).is('resolved_at', null),
+    supabase
+      .from('alerts')
+      .select('id, bottles!inner(bar_id)', { count: 'exact' })
+      .eq('bottles.bar_id', barId)
+      .is('resolved_at', null),
     supabase.from('inventory_scans')
-      .select('scanned_at')
+      .select('scanned_at, bottles!inner(bar_id)')
+      .eq('bottles.bar_id', barId)
       .order('scanned_at', { ascending: false })
       .limit(1),
+    supabase.from('bar').select('name').eq('id', barId).single(),
   ]);
 
   const bottles = bottlesRes.data ?? [];
@@ -30,6 +37,7 @@ async function getDashboardStats(barId: string): Promise<DashboardStats> {
     lowStockCount: alertsRes.count ?? 0,
     spiritTypeCount: spiritTypes,
     lastScanAt: scansRes.data?.[0]?.scanned_at ?? null,
+    barName: barRes.data?.name ?? 'Bar Inventory',
   };
 }
 
@@ -49,7 +57,7 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <Text style={styles.barName}>Bar Inventory</Text>
+        <Text style={styles.barName}>{stats?.barName ?? 'Bar Inventory'}</Text>
         <Text style={styles.userName}>{user?.display_name}</Text>
       </View>
 

@@ -53,7 +53,13 @@ export async function acceptInvite(token: string, displayName: string, password:
     display_name: displayName,
     role: invite.role,
   });
-  if (userError) throw userError;
+  if (userError) {
+    // Auth account was created but profile insert failed.
+    // Sign out the partial session to avoid a broken login state.
+    // Note: the auth account itself cannot be deleted client-side — requires admin cleanup.
+    await supabase.auth.signOut();
+    throw new Error('Account setup failed. Please contact your admin to resend the invite.');
+  }
 
   // 4. Mark invite accepted
   await supabase.from('invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id);
