@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')!;
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY')!;
+const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const SINGLE_PROMPT = `You are analyzing a photo of a single liquor bottle for a bar inventory system.
 
@@ -37,7 +37,7 @@ const CORS_HEADERS = {
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: CORS_HEADERS });
+    return json('ok', 200);
   }
 
   try {
@@ -66,31 +66,37 @@ serve(async (req: Request) => {
 
     const prompt = mode === 'shelf' ? SHELF_PROMPT : SINGLE_PROMPT;
 
-    // Call Gemini Vision API
-    const geminiRes = await fetch(GEMINI_URL, {
+    // Call Claude Vision API
+    const claudeRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 },
+            },
+            { type: 'text', text: prompt },
           ],
         }],
-        generationConfig: {
-          temperature: 0.1,
-          maxOutputTokens: 1024,
-        },
       }),
     });
 
-    if (!geminiRes.ok) {
-      const errText = await geminiRes.text();
-      return json({ ok: false, error: `Gemini error: ${errText}` }, 502);
+    if (!claudeRes.ok) {
+      const errText = await claudeRes.text();
+      return json({ ok: false, error: `Claude API error: ${errText}` }, 502);
     }
 
-    const geminiData = await geminiRes.json();
-    const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const claudeData = await claudeRes.json();
+    const text = claudeData.content?.[0]?.text ?? '';
 
     // Strip any accidental markdown fences
     const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
