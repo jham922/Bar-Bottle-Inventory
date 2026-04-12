@@ -11,6 +11,7 @@ export async function imageUriToBase64(uri: string): Promise<string> {
 
 export async function analyzeBottleImage(imageBase64: string, mode: 'single' | 'shelf'): Promise<SingleScanResult | SingleScanResult[]> {
   const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error('Not authenticated');
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {

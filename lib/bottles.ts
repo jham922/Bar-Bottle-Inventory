@@ -53,9 +53,12 @@ export async function checkAndTriggerAlert(bottleId: string, volumeRemainingMl: 
 
   if (!alert) return;
 
-  if (volumeRemainingMl < alert.threshold_ml) {
+  if (volumeRemainingMl < alert.threshold_ml && !alert.triggered_at) {
+    // First time below threshold — record when the alert fired
     await supabase.from('alerts').update({ triggered_at: new Date().toISOString() }).eq('id', alert.id);
-  } else {
+  } else if (volumeRemainingMl >= alert.threshold_ml && alert.triggered_at) {
+    // Back above threshold and was previously triggered — resolve it
     await supabase.from('alerts').update({ resolved_at: new Date().toISOString() }).eq('id', alert.id);
   }
+  // If below threshold but already triggered, or above threshold but never triggered: no-op
 }
