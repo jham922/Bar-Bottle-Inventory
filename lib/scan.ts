@@ -1,0 +1,51 @@
+import * as FileSystem from 'expo-file-system';
+import { supabase } from './supabase';
+import { SingleScanResult } from '@/types/scan';
+
+const FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-bottle`;
+
+export async function imageUriToBase64(uri: string): Promise<string> {
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
+  return base64;
+}
+
+export async function analyzeBottleImage(imageBase64: string, mode: 'single' | 'shelf'): Promise<SingleScanResult | SingleScanResult[]> {
+  const { data: { session } } = await supabase.auth.getSession();
+  const res = await fetch(FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${session?.access_token}`,
+    },
+    body: JSON.stringify({ imageBase64, mode }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error ?? 'Analysis failed');
+  return json.result;
+}
+
+export async function uploadScanImage(uri: string, barId: string): Promise<string> {
+  const base64 = await imageUriToBase64(uri);
+  const filename = `${barId}/${Date.now()}.jpg`;
+  const { error } = await supabase.storage
+    .from('scan-images')
+    .upload(filename, decode(base64), { contentType: 'image/jpeg' });
+  if (error) throw error;
+  const { data } = supabase.storage.from('scan-images').getPublicUrl(filename);
+  return data.publicUrl;
+}
+
+function decode(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+export function mlToOz(ml: number): number {
+  return Math.round((ml / 29.5735) * 10) / 10;
+}
+
+export function computeVolumeRemaining(fillPct: number, totalVolumeMl: number): number {
+  return Math.round((fillPct / 100) * totalVolumeMl);
+}
