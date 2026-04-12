@@ -13,7 +13,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
+import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getMediaTypeFromUri } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { SingleScanResult } from '@/types/scan';
 
@@ -63,8 +63,9 @@ export default function ShelfScanScreen() {
       setImageUri(photo.uri);
       setStep('analyzing');
 
+      const mediaType = getMediaTypeFromUri(photo.uri);
       const base64 = await imageUriToBase64(photo.uri);
-      const results = await analyzeBottleImage(base64, 'shelf') as SingleScanResult[];
+      const results = await analyzeBottleImage(base64, 'shelf', mediaType) as SingleScanResult[];
 
       const bottles: DetectedBottle[] = await Promise.all(
         results.map(async (r) => {
@@ -191,7 +192,7 @@ export default function ShelfScanScreen() {
           keyExtractor={(_, i) => String(i)}
           style={{ flex: 1 }}
           renderItem={({ item }) => {
-            const totalMl = item.resolvedTotalMl ?? parseInt(item.newSizeMl, 10) || 750;
+            const totalMl = item.resolvedTotalMl ?? (parseInt(item.newSizeMl, 10) || 750);
             const volumeMl = computeVolumeRemaining(item.scanResult.fill_pct, totalMl);
             const low = item.scanResult.fill_pct < 25;
             return (

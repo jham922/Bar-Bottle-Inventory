@@ -12,7 +12,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
+import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getMediaTypeFromUri } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { SingleScanResult } from '@/types/scan';
 
@@ -59,8 +59,9 @@ export default function SingleScanScreen() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
       if (!photo) throw new Error('Failed to capture photo');
       setStep('analyzing');
+      const mediaType = getMediaTypeFromUri(photo.uri);
       const base64 = await imageUriToBase64(photo.uri);
-      const result = await analyzeBottleImage(base64, 'single') as SingleScanResult;
+      const result = await analyzeBottleImage(base64, 'single', mediaType) as SingleScanResult;
 
       const existing = await findBottleByBrand(appUser.bar_id, result.brand);
 

@@ -4,21 +4,33 @@ import { SingleScanResult } from '@/types/scan';
 
 const FUNCTION_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/analyze-bottle`;
 
+export function getMediaTypeFromUri(uri: string): string {
+  if (uri.startsWith('data:')) {
+    const match = uri.match(/^data:([^;]+);/);
+    return match?.[1] ?? 'image/jpeg';
+  }
+  return 'image/jpeg';
+}
+
 export async function imageUriToBase64(uri: string): Promise<string> {
+  // On web, expo-camera returns a data URI (data:image/jpeg;base64,...)
+  if (uri.startsWith('data:')) {
+    return uri.split(',')[1];
+  }
   const base64 = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 });
   return base64;
 }
 
-export async function analyzeBottleImage(imageBase64: string, mode: 'single' | 'shelf'): Promise<SingleScanResult | SingleScanResult[]> {
+export async function analyzeBottleImage(imageBase64: string, mode: 'single' | 'shelf', mediaType = 'image/jpeg'): Promise<SingleScanResult | SingleScanResult[]> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Not authenticated');
   const res = await fetch(FUNCTION_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${session?.access_token}`,
+      Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ imageBase64, mode }),
+    body: JSON.stringify({ imageBase64, mode, mediaType }),
   });
   const json = await res.json();
   if (!json.ok) throw new Error(json.error ?? 'Analysis failed');

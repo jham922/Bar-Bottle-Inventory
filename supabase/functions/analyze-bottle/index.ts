@@ -59,12 +59,13 @@ serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { imageBase64, mode } = await req.json();
+    const { imageBase64, mode, mediaType } = await req.json();
     if (!imageBase64 || !mode) {
       return json({ ok: false, error: 'Missing imageBase64 or mode' }, 400);
     }
 
     const prompt = mode === 'shelf' ? SHELF_PROMPT : SINGLE_PROMPT;
+    const imageMediaType = mediaType ?? 'image/jpeg';
 
     // Call Claude Vision API
     const claudeRes = await fetch(ANTHROPIC_URL, {
@@ -82,7 +83,7 @@ serve(async (req: Request) => {
           content: [
             {
               type: 'image',
-              source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 },
+              source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
             },
             { type: 'text', text: prompt },
           ],
