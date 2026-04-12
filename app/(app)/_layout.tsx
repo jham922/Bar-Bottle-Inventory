@@ -15,6 +15,10 @@ export default function AppLayout() {
         options={{ title: 'Reports', href: isAdmin ? undefined : null }}
       />
       <Tabs.Screen
+        name="alerts/index"
+        options={{ title: 'Alerts', href: isAdmin ? undefined : null }}
+      />
+      <Tabs.Screen
         name="settings/index"
         options={{ title: 'Settings', href: isAdmin ? undefined : null }}
       />
