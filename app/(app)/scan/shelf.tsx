@@ -108,9 +108,11 @@ export default function ShelfScanScreen() {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    (input as any).capture = 'environment';
+    input.setAttribute('capture', 'environment');
+    input.style.display = 'none';
     input.onchange = async (e: any) => {
       const file = e.target?.files?.[0];
+      document.body.removeChild(input);
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async () => {
@@ -121,6 +123,7 @@ export default function ShelfScanScreen() {
       };
       reader.readAsDataURL(file);
     };
+    document.body.appendChild(input);
     input.click();
   }
 
