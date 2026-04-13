@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "plan-1-foundation",
-    "slug": "plan-1-foundation",
+    "name": "Bar Inventory",
+    "slug": "bar-inventory",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "plan1foundation",
+    "scheme": "barinventory",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
