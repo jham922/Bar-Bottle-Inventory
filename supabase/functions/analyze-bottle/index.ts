@@ -99,6 +99,9 @@ serve(async (req: Request) => {
     const claudeData = await claudeRes.json();
     const text = claudeData.content?.[0]?.text ?? '';
 
+    console.log(`[analyze-bottle] imageBase64 size: ${imageBase64.length} bytes, mediaType: ${imageMediaType}`);
+    console.log(`[analyze-bottle] Claude raw response: ${text}`);
+
     // Strip any accidental markdown fences
     const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
 
@@ -109,6 +112,7 @@ serve(async (req: Request) => {
       return json({ ok: false, error: `Could not parse AI response: ${text}` }, 502);
     }
 
+    console.log(`[analyze-bottle] Parsed result: ${JSON.stringify(result)}`);
     return json({ ok: true, result });
   } catch (e: any) {
     return json({ ok: false, error: e.message ?? 'Internal error' }, 500);

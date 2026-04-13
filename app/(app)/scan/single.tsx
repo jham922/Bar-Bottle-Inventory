@@ -8,11 +8,12 @@ import {
   Alert,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getMediaTypeFromUri } from '@/lib/scan';
+import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { SingleScanResult } from '@/types/scan';
 
@@ -25,6 +26,8 @@ interface ConfirmData {
   newBottleName: string;
   newBottleSizeMl: number;
 }
+
+const isWeb = Platform.OS === 'web';
 
 export default function SingleScanScreen() {
   const router = useRouter();
@@ -39,43 +42,71 @@ export default function SingleScanScreen() {
   const [newBottleName, setNewBottleName] = useState('');
   const [newBottleSizeMl, setNewBottleSizeMl] = useState('');
 
-  if (!permission) return <View style={styles.container} />;
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Camera access is required to scan bottles.</Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  async function handleCapture() {
-    if (!cameraRef.current || !appUser) return;
+  async function processCapture(base64: string, mediaType: string, imageUri: string) {
+    if (!appUser) return;
+    setStep('analyzing');
     setError(null);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      if (!photo) throw new Error('Failed to capture photo');
-      setStep('analyzing');
-      const mediaType = getMediaTypeFromUri(photo.uri);
-      const base64 = await imageUriToBase64(photo.uri);
       const result = await analyzeBottleImage(base64, 'single', mediaType) as SingleScanResult;
-
       const existing = await findBottleByBrand(appUser.bar_id, result.brand);
 
       if (!existing && result.known_bottle === false) {
-        setConfirmData({ scanResult: result, imageUri: photo.uri, bottle: null, newBottleName: result.brand, newBottleSizeMl: 750 });
+        setConfirmData({ scanResult: result, imageUri, bottle: null, newBottleName: result.brand, newBottleSizeMl: 750 });
         setNewBottleName(result.brand);
         setNewBottleSizeMl('750');
         setStep('new_bottle');
       } else {
         const bottle = existing ?? null;
-        setConfirmData({ scanResult: result, imageUri: photo.uri, bottle: bottle ? { id: bottle.id, total_volume_ml: bottle.total_volume_ml } : null, newBottleName: '', newBottleSizeMl: 750 });
+        setConfirmData({
+          scanResult: result,
+          imageUri,
+          bottle: bottle ? { id: bottle.id, total_volume_ml: bottle.total_volume_ml } : null,
+          newBottleName: '',
+          newBottleSizeMl: 750,
+        });
         setEditedFillPct(String(result.fill_pct));
         setStep('confirm');
       }
+    } catch (e: any) {
+      setError(e.message ?? 'Something went wrong');
+      setStep('camera');
+    }
+  }
+
+  // Web: use native file input (opens iPhone camera)
+  function handleWebCapture() {
+    if (!appUser) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    (input as any).capture = 'environment';
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const mediaType = file.type || 'image/jpeg';
+        const base64 = dataUrl.split(',')[1];
+        await processCapture(base64, mediaType, dataUrl);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  // Native: use CameraView
+  async function handleNativeCapture() {
+    if (!cameraRef.current || !appUser) return;
+    setError(null);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+      if (!photo) throw new Error('Failed to capture photo');
+      const mediaType = photo.uri.startsWith('data:')
+        ? (photo.uri.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg')
+        : 'image/jpeg';
+      const base64 = photo.uri.startsWith('data:') ? photo.uri.split(',')[1] : photo.uri;
+      await processCapture(base64, mediaType, photo.uri);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
       setStep('camera');
@@ -133,29 +164,6 @@ export default function SingleScanScreen() {
     }
   }
 
-  if (step === 'camera') {
-    return (
-      <View style={styles.container}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="back">
-          <View style={styles.overlay}>
-            <View style={styles.guide} />
-            <Text style={styles.guideLabel}>Center the bottle</Text>
-          </View>
-        </CameraView>
-        {error && <Text style={styles.error}>{error}</Text>}
-        <View style={styles.controls}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
-            <View style={styles.captureInner} />
-          </TouchableOpacity>
-          <View style={{ width: 64 }} />
-        </View>
-      </View>
-    );
-  }
-
   if (step === 'analyzing') {
     return (
       <View style={[styles.container, styles.centered]}>
@@ -170,6 +178,59 @@ export default function SingleScanScreen() {
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#fff" />
         <Text style={styles.message}>Saving scan...</Text>
+      </View>
+    );
+  }
+
+  if (step === 'camera') {
+    // Web: simple button that triggers native file/camera picker
+    if (isWeb) {
+      return (
+        <View style={[styles.container, styles.centered]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.webBack}>
+            <Text style={styles.webBackText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.webTitle}>Single Bottle Scan</Text>
+          <Text style={styles.webHint}>Point your camera at a bottle label so it's clearly visible.</Text>
+          <TouchableOpacity style={styles.webCaptureBtn} onPress={handleWebCapture}>
+            <Text style={styles.webCaptureBtnText}>📷  Take Photo</Text>
+          </TouchableOpacity>
+          {error && <Text style={styles.error}>{error}</Text>}
+        </View>
+      );
+    }
+
+    // Native: full camera view with live preview
+    if (!permission) return <View style={styles.container} />;
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, styles.centered]}>
+          <Text style={styles.message}>Camera access is required to scan bottles.</Text>
+          <TouchableOpacity style={styles.button} onPress={requestPermission}>
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.container}>
+        <CameraView ref={cameraRef} style={styles.camera} facing="back">
+          <View style={styles.overlay}>
+            <View style={styles.guide} />
+            <Text style={styles.guideLabel}>Center the bottle</Text>
+          </View>
+        </CameraView>
+        {error && <Text style={styles.error}>{error}</Text>}
+        <View style={styles.controls}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.captureButton} onPress={handleNativeCapture}>
+            <View style={styles.captureInner} />
+          </TouchableOpacity>
+          <View style={{ width: 64 }} />
+        </View>
       </View>
     );
   }
@@ -290,6 +351,17 @@ const styles = StyleSheet.create({
   captureInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
   backButton: { width: 64 },
   backButtonText: { color: '#fff', fontSize: 16 },
+  webBack: { position: 'absolute', top: 60, left: 24 },
+  webBackText: { color: '#888', fontSize: 15 },
+  webTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  webHint: { color: '#666', fontSize: 13, textAlign: 'center', paddingHorizontal: 40, marginBottom: 32 },
+  webCaptureBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 40,
+  },
+  webCaptureBtnText: { color: '#111', fontWeight: '700', fontSize: 18 },
   form: { padding: 24, gap: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 4 },
   subtitle: { color: '#999', fontSize: 14, marginBottom: 8 },

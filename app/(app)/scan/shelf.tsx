@@ -9,13 +9,16 @@ import {
   FlatList,
   StyleSheet,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { imageUriToBase64, analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getMediaTypeFromUri } from '@/lib/scan';
+import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { SingleScanResult } from '@/types/scan';
+
+const isWeb = Platform.OS === 'web';
 
 type Step = 'camera' | 'analyzing' | 'review' | 'unknown_queue' | 'saving';
 
@@ -41,30 +44,12 @@ export default function ShelfScanScreen() {
   const [currentUnknown, setCurrentUnknown] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  if (!permission) return <View style={styles.container} />;
-
-  if (!permission.granted) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Camera access is required to scan bottles.</Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  async function handleCapture() {
-    if (!cameraRef.current || !appUser) return;
+  async function processCapture(base64: string, mediaType: string, uri: string) {
+    if (!appUser) return;
+    setImageUri(uri);
+    setStep('analyzing');
     setError(null);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-      if (!photo) throw new Error('Failed to capture photo');
-      setImageUri(photo.uri);
-      setStep('analyzing');
-
-      const mediaType = getMediaTypeFromUri(photo.uri);
-      const base64 = await imageUriToBase64(photo.uri);
       const results = await analyzeBottleImage(base64, 'shelf', mediaType) as SingleScanResult[];
 
       const bottles: DetectedBottle[] = await Promise.all(
@@ -86,6 +71,44 @@ export default function ShelfScanScreen() {
       setUnknownQueue(unknownIndices);
       setCurrentUnknown(0);
       setStep('review');
+    } catch (e: any) {
+      setError(e.message ?? 'Something went wrong');
+      setStep('camera');
+    }
+  }
+
+  function handleWebCapture() {
+    if (!appUser) return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    (input as any).capture = 'environment';
+    input.onchange = async (e: any) => {
+      const file = e.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const mediaType = file.type || 'image/jpeg';
+        const base64 = dataUrl.split(',')[1];
+        await processCapture(base64, mediaType, dataUrl);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  }
+
+  async function handleNativeCapture() {
+    if (!cameraRef.current || !appUser) return;
+    setError(null);
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+      if (!photo) throw new Error('Failed to capture photo');
+      const mediaType = photo.uri.startsWith('data:')
+        ? (photo.uri.match(/^data:([^;]+);/)?.[1] ?? 'image/jpeg')
+        : 'image/jpeg';
+      const base64 = photo.uri.startsWith('data:') ? photo.uri.split(',')[1] : photo.uri;
+      await processCapture(base64, mediaType, photo.uri);
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
       setStep('camera');
@@ -153,6 +176,34 @@ export default function ShelfScanScreen() {
   }
 
   if (step === 'camera') {
+    if (isWeb) {
+      return (
+        <View style={[styles.container, styles.centered]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.webBack}>
+            <Text style={styles.webBackText}>← Back</Text>
+          </TouchableOpacity>
+          <Text style={styles.webTitle}>Shelf Scan</Text>
+          <Text style={styles.webHint}>Take a photo of the shelf. Claude will identify all visible bottles at once.</Text>
+          <TouchableOpacity style={styles.webCaptureBtn} onPress={handleWebCapture}>
+            <Text style={styles.webCaptureBtnText}>📷  Take Photo</Text>
+          </TouchableOpacity>
+          {error && <Text style={styles.error}>{error}</Text>}
+        </View>
+      );
+    }
+
+    if (!permission) return <View style={styles.container} />;
+    if (!permission.granted) {
+      return (
+        <View style={[styles.container, styles.centered]}>
+          <Text style={styles.message}>Camera access is required to scan bottles.</Text>
+          <TouchableOpacity style={styles.button} onPress={requestPermission}>
+            <Text style={styles.buttonText}>Grant Permission</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.container}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back">
@@ -165,7 +216,7 @@ export default function ShelfScanScreen() {
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
             <Text style={styles.backButtonText}>Back</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.captureButton} onPress={handleCapture}>
+          <TouchableOpacity style={styles.captureButton} onPress={handleNativeCapture}>
             <View style={styles.captureInner} />
           </TouchableOpacity>
           <View style={{ width: 64 }} />
@@ -296,6 +347,12 @@ const styles = StyleSheet.create({
   captureInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#fff' },
   backButton: { width: 64 },
   backButtonText: { color: '#fff', fontSize: 16 },
+  webBack: { position: 'absolute', top: 60, left: 24 },
+  webBackText: { color: '#888', fontSize: 15 },
+  webTitle: { color: '#fff', fontSize: 22, fontWeight: '700', marginBottom: 8 },
+  webHint: { color: '#666', fontSize: 13, textAlign: 'center', paddingHorizontal: 40, marginBottom: 32 },
+  webCaptureBtn: { backgroundColor: '#fff', borderRadius: 12, paddingVertical: 18, paddingHorizontal: 40 },
+  webCaptureBtnText: { color: '#111', fontWeight: '700', fontSize: 18 },
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '700', padding: 16 },
   reviewRow: {
     flexDirection: 'row',
