@@ -56,6 +56,21 @@ export async function getActiveAlerts(barId: string): Promise<ActiveAlert[]> {
   return results;
 }
 
+/**
+ * Synchronous version — takes pre-fetched scans sorted ascending by scanned_at.
+ * Used by reports.ts to avoid redundant DB queries.
+ */
+export function computeConsumptionFromScans(scans: { volume_remaining_ml: number }[]): number {
+  if (scans.length < 2) return 0;
+  let total = 0;
+  for (let i = 1; i < scans.length; i++) {
+    const prev = scans[i - 1].volume_remaining_ml;
+    const curr = scans[i].volume_remaining_ml;
+    if (curr < prev) total += prev - curr;
+  }
+  return total;
+}
+
 export function formatDuration(ms: number): string {
   const hours = Math.floor(ms / (1000 * 60 * 60));
   if (hours < 24) return `${hours}h`;
