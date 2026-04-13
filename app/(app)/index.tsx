@@ -57,7 +57,7 @@ export default function HomeScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.header}>
-        <Text style={styles.barName}>{stats?.barName ?? 'Bar Inventory'}</Text>
+        <Text style={styles.barName}>Bar Bottle Inventory</Text>
         <Text style={styles.userName}>{user?.display_name}</Text>
       </View>
 

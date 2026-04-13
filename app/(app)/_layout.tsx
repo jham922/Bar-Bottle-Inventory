@@ -17,18 +17,6 @@ export default function AppLayout() {
       <Tabs.Screen name="scan/index" options={{ title: 'Scan' }} />
       <Tabs.Screen name="inventory/index" options={{ title: 'Inventory' }} />
       <Tabs.Screen
-        name="recipes/index"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="reports/index"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
-        name="alerts/index"
-        options={{ href: null }}
-      />
-      <Tabs.Screen
         name="settings/index"
         options={{ title: 'Settings', href: isAdmin ? undefined : null }}
       />
