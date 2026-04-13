@@ -1,8 +1,6 @@
 import { Tabs } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
 
-const hide = { tabBarButton: () => null, href: null } as const;
-
 export default function AppLayout() {
   const user = useAppUser();
   const isAdmin = user?.role === 'admin';
@@ -20,20 +18,19 @@ export default function AppLayout() {
       <Tabs.Screen name="inventory/index" options={{ title: 'Inventory' }} />
       <Tabs.Screen name="settings/index" options={{ title: 'Settings', href: isAdmin ? undefined : null }} />
 
-      {/* Hidden routes — accessible via navigation but not shown as tabs */}
-      <Tabs.Screen name="scan/single" options={hide} />
-      <Tabs.Screen name="scan/shelf" options={hide} />
-      <Tabs.Screen name="inventory/[id]" options={hide} />
-      <Tabs.Screen name="recipes/index" options={hide} />
-      <Tabs.Screen name="recipes/new" options={hide} />
-      <Tabs.Screen name="recipes/[id]" options={hide} />
-      <Tabs.Screen name="reports/index" options={hide} />
-      <Tabs.Screen name="reports/consumption" options={hide} />
-      <Tabs.Screen name="reports/variance" options={hide} />
-      <Tabs.Screen name="alerts/index" options={hide} />
-      <Tabs.Screen name="settings/team" options={hide} />
-      <Tabs.Screen name="settings/invite" options={hide} />
-      <Tabs.Screen name="settings/toast-upload" options={hide} />
+      <Tabs.Screen name="scan/single" options={{ href: null }} />
+      <Tabs.Screen name="scan/shelf" options={{ href: null }} />
+      <Tabs.Screen name="inventory/[id]" options={{ href: null }} />
+      <Tabs.Screen name="recipes/index" options={{ href: null }} />
+      <Tabs.Screen name="recipes/new" options={{ href: null }} />
+      <Tabs.Screen name="recipes/[id]" options={{ href: null }} />
+      <Tabs.Screen name="reports/index" options={{ href: null }} />
+      <Tabs.Screen name="reports/consumption" options={{ href: null }} />
+      <Tabs.Screen name="reports/variance" options={{ href: null }} />
+      <Tabs.Screen name="alerts/index" options={{ href: null }} />
+      <Tabs.Screen name="settings/team" options={{ href: null }} />
+      <Tabs.Screen name="settings/invite" options={{ href: null }} />
+      <Tabs.Screen name="settings/toast-upload" options={{ href: null }} />
     </Tabs>
   );
 }
