@@ -85,14 +85,14 @@ export default function HomeScreen() {
       )}
 
       <View style={styles.actions}>
-        <Pressable style={styles.actionBtn} onPress={() => router.push('/(app)/scan/index')}>
+        <Pressable style={styles.actionBtn} onPress={() => router.push('/(app)/scan')}>
           <Text style={styles.actionBtnText}>Scan</Text>
         </Pressable>
-        <Pressable style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={() => router.push('/(app)/inventory/index')}>
+        <Pressable style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={() => router.push('/(app)/inventory')}>
           <Text style={[styles.actionBtnText, { color: '#ddd' }]}>Inventory</Text>
         </Pressable>
         {isAdmin && (
-          <Pressable style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={() => router.push('/(app)/reports/index')}>
+          <Pressable style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={() => router.push('/(app)/reports')}>
             <Text style={[styles.actionBtnText, { color: '#ddd' }]}>Report</Text>
           </Pressable>
         )}
