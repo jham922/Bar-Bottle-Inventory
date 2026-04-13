@@ -10,6 +10,9 @@ export default function SettingsScreen() {
       <Pressable style={styles.row} onPress={() => router.push('/(app)/settings/team')}>
         <Text style={styles.rowText}>Team Management</Text>
       </Pressable>
+      <Pressable style={styles.row} onPress={() => router.push('/(app)/settings/toast-upload')}>
+        <Text style={styles.rowText}>Toast Product Mix Upload</Text>
+      </Pressable>
       <Pressable style={styles.row} onPress={signOut}>
         <Text style={[styles.rowText, { color: '#cc6666' }]}>Sign Out</Text>
       </Pressable>

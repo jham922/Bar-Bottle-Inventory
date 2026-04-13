@@ -1,5 +1,5 @@
 module.exports = {
-  setupFiles: [],
+  setupFiles: ['./jest.setup.js'],
   testEnvironment: 'node',
   transform: {
     '^.+\.(js|ts|tsx)$': 'babel-jest',

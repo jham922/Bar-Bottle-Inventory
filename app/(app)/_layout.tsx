@@ -11,6 +11,10 @@ export default function AppLayout() {
       <Tabs.Screen name="scan/index" options={{ title: 'Scan' }} />
       <Tabs.Screen name="inventory/index" options={{ title: 'Inventory' }} />
       <Tabs.Screen
+        name="recipes/index"
+        options={{ title: 'Recipes', href: isAdmin ? undefined : null }}
+      />
+      <Tabs.Screen
         name="reports/index"
         options={{ title: 'Reports', href: isAdmin ? undefined : null }}
       />
