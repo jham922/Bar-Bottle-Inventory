@@ -77,6 +77,32 @@ export default function ShelfScanScreen() {
     }
   }
 
+  function compressImage(dataUrl: string): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        try {
+          const MAX = 1600;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          const result = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(result.length > 100 ? result : dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   function handleWebCapture() {
     if (!appUser) return;
     const input = document.createElement('input');
@@ -88,10 +114,10 @@ export default function ShelfScanScreen() {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async () => {
-        const dataUrl = reader.result as string;
-        const mediaType = file.type || 'image/jpeg';
-        const base64 = dataUrl.split(',')[1];
-        await processCapture(base64, mediaType, dataUrl);
+        const rawDataUrl = reader.result as string;
+        const compressed = await compressImage(rawDataUrl);
+        const base64 = compressed.split(',')[1];
+        await processCapture(base64, 'image/jpeg', compressed);
       };
       reader.readAsDataURL(file);
     };

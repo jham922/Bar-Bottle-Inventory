@@ -39,6 +39,7 @@ export default function SingleScanScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null);
   const [editedFillPct, setEditedFillPct] = useState('');
+  const [editedBrand, setEditedBrand] = useState('');
   const [newBottleName, setNewBottleName] = useState('');
   const [newBottleSizeMl, setNewBottleSizeMl] = useState('');
 
@@ -50,27 +51,48 @@ export default function SingleScanScreen() {
       const result = await analyzeBottleImage(base64, 'single', mediaType) as SingleScanResult;
       const existing = await findBottleByBrand(appUser.bar_id, result.brand);
 
-      if (!existing && result.known_bottle === false) {
-        setConfirmData({ scanResult: result, imageUri, bottle: null, newBottleName: result.brand, newBottleSizeMl: 750 });
-        setNewBottleName(result.brand);
-        setNewBottleSizeMl('750');
-        setStep('new_bottle');
-      } else {
-        const bottle = existing ?? null;
-        setConfirmData({
-          scanResult: result,
-          imageUri,
-          bottle: bottle ? { id: bottle.id, total_volume_ml: bottle.total_volume_ml } : null,
-          newBottleName: '',
-          newBottleSizeMl: 750,
-        });
-        setEditedFillPct(String(result.fill_pct));
-        setStep('confirm');
-      }
+      const bottle = existing ?? null;
+      setConfirmData({
+        scanResult: result,
+        imageUri,
+        bottle: bottle ? { id: bottle.id, total_volume_ml: bottle.total_volume_ml } : null,
+        newBottleName: result.brand,
+        newBottleSizeMl: 750,
+      });
+      setEditedBrand(result.brand);
+      setEditedFillPct(String(result.fill_pct));
+      setStep('confirm');
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
       setStep('camera');
     }
+  }
+
+  // Resize image to max 1600px and compress to JPEG 0.85 before sending to Claude
+  function compressImage(dataUrl: string): Promise<string> {
+    return new Promise((resolve) => {
+      const img = new window.Image();
+      img.onload = () => {
+        try {
+          const MAX = 1600;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+            else { width = Math.round((width * MAX) / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+          const result = canvas.toDataURL('image/jpeg', 0.85);
+          resolve(result.length > 100 ? result : dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
   }
 
   // Web: use native file input (opens iPhone camera)
@@ -85,10 +107,10 @@ export default function SingleScanScreen() {
       if (!file) return;
       const reader = new FileReader();
       reader.onload = async () => {
-        const dataUrl = reader.result as string;
-        const mediaType = file.type || 'image/jpeg';
-        const base64 = dataUrl.split(',')[1];
-        await processCapture(base64, mediaType, dataUrl);
+        const rawDataUrl = reader.result as string;
+        const compressed = await compressImage(rawDataUrl);
+        const base64 = compressed.split(',')[1];
+        await processCapture(base64, 'image/jpeg', compressed);
       };
       reader.readAsDataURL(file);
     };
@@ -122,6 +144,7 @@ export default function SingleScanScreen() {
       return;
     }
     setConfirmData({ ...confirmData, newBottleName: name, newBottleSizeMl: sizeMl });
+    setEditedBrand(name);
     setEditedFillPct(String(confirmData.scanResult.fill_pct));
     setStep('confirm');
   }
@@ -142,11 +165,13 @@ export default function SingleScanScreen() {
         bottleId = confirmData.bottle.id;
         totalVolumeMl = confirmData.bottle.total_volume_ml;
       } else {
+        const brandName = editedBrand.trim() || confirmData.scanResult.brand || 'Unknown';
+        const sizeMl = confirmData.newBottleSizeMl || 750;
         const newBottle = await createBottle(
           appUser.bar_id,
-          confirmData.newBottleName,
+          brandName,
           confirmData.scanResult.spirit_type,
-          confirmData.newBottleSizeMl,
+          sizeMl,
         );
         bottleId = newBottle.id;
         totalVolumeMl = newBottle.total_volume_ml;
@@ -280,13 +305,23 @@ export default function SingleScanScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.form}>
         <Text style={styles.title}>Confirm Scan</Text>
 
-        <Text style={styles.fieldLabel}>Brand</Text>
-        <Text style={styles.fieldValue}>{confirmData.bottle ? confirmData.scanResult.brand : confirmData.newBottleName}</Text>
+        <Text style={styles.fieldLabel}>Brand{!confirmData.bottle ? ' (edit if wrong)' : ''}</Text>
+        {confirmData.bottle ? (
+          <Text style={styles.fieldValue}>{confirmData.scanResult.brand}</Text>
+        ) : (
+          <TextInput
+            style={styles.input}
+            value={editedBrand}
+            onChangeText={setEditedBrand}
+            placeholder="Enter brand name"
+            placeholderTextColor="#555"
+          />
+        )}
 
         <Text style={styles.fieldLabel}>Spirit Type</Text>
         <Text style={styles.fieldValue}>{confirmData.scanResult.spirit_type}</Text>
 
-        <Text style={styles.fieldLabel}>Fill %</Text>
+        <Text style={styles.fieldLabel}>Fill % (edit if wrong)</Text>
         <TextInput
           style={styles.input}
           value={editedFillPct}

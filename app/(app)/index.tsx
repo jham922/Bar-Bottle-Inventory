@@ -98,6 +98,24 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {isAdmin && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Admin Tools</Text>
+          <Pressable style={styles.toolRow} onPress={() => router.push('/(app)/reports')}>
+            <Text style={styles.toolLabel}>Reports</Text>
+            <Text style={styles.toolChevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.toolRow} onPress={() => router.push('/(app)/recipes')}>
+            <Text style={styles.toolLabel}>Recipes</Text>
+            <Text style={styles.toolChevron}>›</Text>
+          </Pressable>
+          <Pressable style={styles.toolRow} onPress={() => router.push('/(app)/alerts')}>
+            <Text style={styles.toolLabel}>Alerts</Text>
+            <Text style={styles.toolChevron}>›</Text>
+          </Pressable>
+        </View>
+      )}
+
       {isAdmin && activity.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Recent Activity</Text>
@@ -132,6 +150,9 @@ const styles = StyleSheet.create({
   actionBtnText: { color: '#000', fontWeight: 'bold', fontSize: 13 },
   section: { paddingHorizontal: 16 },
   sectionTitle: { color: '#888', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  toolRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#1e1e1e' },
+  toolLabel: { color: '#fff', fontSize: 15 },
+  toolChevron: { color: '#555', fontSize: 20 },
   activityRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#1e1e1e' },
   activityText: { color: '#ccc', fontSize: 13, flex: 1, marginRight: 8 },
   activityTime: { color: '#555', fontSize: 12 },
