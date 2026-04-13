@@ -6,23 +6,37 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const SINGLE_PROMPT = `You are analyzing a photo of a single liquor bottle for a bar inventory system.
 
+To estimate fill_pct accurately:
+1. Identify the bottle's main cylindrical body only — ignore the base (thick glass at bottom), the shoulder (where bottle narrows), and the neck.
+2. Within that cylindrical body, find the air gap: the empty space above the liquid surface.
+3. Estimate what percentage of the cylindrical body is air gap, then subtract from 100 to get fill_pct.
+4. Round DOWN to the nearest 5. It is better to slightly underestimate than overestimate.
+5. A bottle with a small air gap is at most 85%, not 95-100%. A bottle where liquid fills half the body is 50%.
+
 Return ONLY valid JSON with no markdown, no explanation, no code fences. The JSON must have exactly these fields:
 {
   "brand": "exact brand name as it appears on the label",
   "spirit_type": "one of: Whiskey, Gin, Vodka, Rum, Tequila, Mezcal, Liqueur, Amaro, Brandy, Other",
-  "fill_pct": <integer 0-100 representing how full the bottle is>,
+  "fill_pct": <integer 0-100 representing how full the cylindrical body is, rounded down to nearest 5>,
   "confidence": "high" | "medium" | "low",
   "known_bottle": <true if you can clearly identify the brand, false if uncertain or label is not visible>
 }`;
 
 const SHELF_PROMPT = `You are analyzing a photo of a bar shelf with multiple liquor bottles for an inventory system.
 
+To estimate fill_pct accurately for each bottle:
+1. Identify the bottle's main cylindrical body only — ignore the base (thick glass at bottom), the shoulder (where bottle narrows), and the neck.
+2. Within that cylindrical body, find the air gap: the empty space above the liquid surface.
+3. Estimate what percentage of the cylindrical body is air gap, then subtract from 100 to get fill_pct.
+4. Round DOWN to the nearest 5. It is better to slightly underestimate than overestimate.
+5. A bottle with a small air gap is at most 85%, not 95-100%. A bottle where liquid fills half the body is 50%.
+
 Return ONLY valid JSON with no markdown, no explanation, no code fences. The JSON must be an array of objects, one per visible bottle:
 [
   {
     "brand": "exact brand name as it appears on the label",
     "spirit_type": "one of: Whiskey, Gin, Vodka, Rum, Tequila, Mezcal, Liqueur, Amaro, Brandy, Other",
-    "fill_pct": <integer 0-100 representing how full the bottle is>,
+    "fill_pct": <integer 0-100 representing how full the cylindrical body is, rounded down to nearest 5>,
     "confidence": "high" | "medium" | "low",
     "known_bottle": <true if you can clearly identify the brand, false if uncertain>
   }
@@ -99,8 +113,6 @@ serve(async (req: Request) => {
     const claudeData = await claudeRes.json();
     const text = claudeData.content?.[0]?.text ?? '';
 
-    console.log(`[analyze-bottle] imageBase64 size: ${imageBase64.length} bytes, mediaType: ${imageMediaType}`);
-    console.log(`[analyze-bottle] Claude raw response: ${text}`);
 
     // Strip any accidental markdown fences
     const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
@@ -112,7 +124,6 @@ serve(async (req: Request) => {
       return json({ ok: false, error: `Could not parse AI response: ${text}` }, 502);
     }
 
-    console.log(`[analyze-bottle] Parsed result: ${JSON.stringify(result)}`);
     return json({ ok: true, result });
   } catch (e: any) {
     return json({ ok: false, error: e.message ?? 'Internal error' }, 500);
