@@ -13,7 +13,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
+import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getRecentCalibrations, saveScanCalibration } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { supabase } from '@/lib/supabase';
 import { SingleScanResult } from '@/types/scan';
@@ -40,6 +40,7 @@ export default function SingleScanScreen() {
   const [error, setError] = useState<string | null>(null);
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null);
   const [editedFillPct, setEditedFillPct] = useState('');
+  const [aiFillPct, setAiFillPct] = useState(0);
   const [editedBrand, setEditedBrand] = useState('');
   const [editedSpiritType, setEditedSpiritType] = useState('');
   const [editedBottleSizeMl, setEditedBottleSizeMl] = useState('');
@@ -51,7 +52,8 @@ export default function SingleScanScreen() {
     setStep('analyzing');
     setError(null);
     try {
-      const result = await analyzeBottleImage(base64, 'single', mediaType) as SingleScanResult;
+      const calibrations = await getRecentCalibrations(appUser.bar_id);
+      const result = await analyzeBottleImage(base64, 'single', mediaType, calibrations) as SingleScanResult;
       const existing = await findBottleByBrand(appUser.bar_id, result.brand);
 
       const bottle = existing ?? null;
@@ -62,6 +64,7 @@ export default function SingleScanScreen() {
         newBottleName: result.brand,
         newBottleSizeMl: 750,
       });
+      setAiFillPct(result.fill_pct);
       setEditedBrand(result.brand);
       setEditedSpiritType(result.spirit_type);
       setEditedFillPct(String(result.fill_pct));
@@ -201,6 +204,7 @@ export default function SingleScanScreen() {
       const imageUrl = await uploadScanImage(confirmData.imageUri, appUser.bar_id);
       await saveInventoryScan(bottleId, fillPct, volumeRemainingMl, appUser.id, imageUrl);
       await checkAndTriggerAlert(bottleId, volumeRemainingMl);
+      await saveScanCalibration(appUser.bar_id, aiFillPct, fillPct);
 
       router.replace('/inventory');
     } catch (e: any) {

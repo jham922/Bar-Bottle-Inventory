@@ -21,7 +21,29 @@ export async function imageUriToBase64(uri: string): Promise<string> {
   return base64;
 }
 
-export async function analyzeBottleImage(imageBase64: string, mode: 'single' | 'shelf', mediaType = 'image/jpeg'): Promise<SingleScanResult | SingleScanResult[]> {
+export type ScanCalibration = { ai: number; corrected: number };
+
+export async function getRecentCalibrations(barId: string): Promise<ScanCalibration[]> {
+  const { data } = await supabase
+    .from('scan_calibrations')
+    .select('ai_fill_pct, corrected_fill_pct')
+    .eq('bar_id', barId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+  return (data ?? []).map(r => ({ ai: r.ai_fill_pct, corrected: r.corrected_fill_pct }));
+}
+
+export async function saveScanCalibration(barId: string, aiFillPct: number, correctedFillPct: number): Promise<void> {
+  if (aiFillPct === correctedFillPct) return;
+  await supabase.from('scan_calibrations').insert({ bar_id: barId, ai_fill_pct: aiFillPct, corrected_fill_pct: correctedFillPct });
+}
+
+export async function analyzeBottleImage(
+  imageBase64: string,
+  mode: 'single' | 'shelf',
+  mediaType = 'image/jpeg',
+  calibrations: ScanCalibration[] = [],
+): Promise<SingleScanResult | SingleScanResult[]> {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Not authenticated');
   const res = await fetch(FUNCTION_URL, {
@@ -30,7 +52,7 @@ export async function analyzeBottleImage(imageBase64: string, mode: 'single' | '
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ imageBase64, mode, mediaType }),
+    body: JSON.stringify({ imageBase64, mode, mediaType, calibrations }),
   });
   const json = await res.json();
   if (!json.ok) throw new Error(json.error ?? 'Analysis failed');

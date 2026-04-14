@@ -63,6 +63,15 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences. An arra
 
 Include every bottle you can see. If a label is not readable, use your best guess for brand and set known_bottle to false.`;
 
+function buildCalibrationText(calibrations: Array<{ ai: number; corrected: number }> | undefined): string {
+  if (!calibrations || calibrations.length === 0) return '';
+  const examples = calibrations
+    .slice(0, 10)
+    .map(c => `  - AI estimated ${c.ai}%, correct fill was ${c.corrected}%`)
+    .join('\n');
+  return `\n\nRecent user corrections for this bar (adjust your fill_pct estimates accordingly):\n${examples}`;
+}
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -92,12 +101,14 @@ serve(async (req: Request) => {
     }
 
     // Parse request body
-    const { imageBase64, mode, mediaType } = await req.json();
+    const { imageBase64, mode, mediaType, calibrations } = await req.json();
     if (!imageBase64 || !mode) {
       return json({ ok: false, error: 'Missing imageBase64 or mode' }, 400);
     }
 
-    const prompt = mode === 'shelf' ? SHELF_PROMPT : SINGLE_PROMPT;
+    const basePrompt = mode === 'shelf' ? SHELF_PROMPT : SINGLE_PROMPT;
+    const calibrationText = buildCalibrationText(calibrations);
+    const prompt = basePrompt + calibrationText;
     const imageMediaType = mediaType ?? 'image/jpeg';
 
     // Call Claude Vision API

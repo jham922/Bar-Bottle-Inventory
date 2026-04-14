@@ -14,7 +14,7 @@ import {
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
+import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining, getRecentCalibrations, saveScanCalibration } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
 import { SingleScanResult } from '@/types/scan';
 
@@ -30,6 +30,7 @@ interface DetectedBottle {
   newName: string;
   newSizeMl: string;
   editedFillPct: string;
+  editedSpiritType: string;
 }
 
 export default function ShelfScanScreen() {
@@ -51,7 +52,8 @@ export default function ShelfScanScreen() {
     setStep('analyzing');
     setError(null);
     try {
-      const results = await analyzeBottleImage(base64, 'shelf', mediaType) as SingleScanResult[];
+      const calibrations = await getRecentCalibrations(appUser.bar_id);
+      const results = await analyzeBottleImage(base64, 'shelf', mediaType, calibrations) as SingleScanResult[];
 
       const bottles: DetectedBottle[] = await Promise.all(
         results.map(async (r) => {
@@ -64,6 +66,7 @@ export default function ShelfScanScreen() {
             newName: r.brand,
             newSizeMl: String(existing?.total_volume_ml ?? 750),
             editedFillPct: String(r.fill_pct),
+            editedSpiritType: r.spirit_type,
           };
         })
       );
@@ -189,7 +192,7 @@ export default function ShelfScanScreen() {
           totalMl = bottle.resolvedTotalMl;
         } else {
           const sizeMl = parseInt(bottle.newSizeMl, 10) || 750;
-          const created = await createBottle(appUser.bar_id, bottle.newName.trim() || bottle.scanResult.brand, bottle.scanResult.spirit_type, sizeMl);
+          const created = await createBottle(appUser.bar_id, bottle.newName.trim() || bottle.scanResult.brand, bottle.editedSpiritType || bottle.scanResult.spirit_type, sizeMl);
           bottleId = created.id;
           totalMl = created.total_volume_ml;
         }
@@ -198,6 +201,7 @@ export default function ShelfScanScreen() {
         const volumeMl = computeVolumeRemaining(fillPct, totalMl);
         await saveInventoryScan(bottleId, fillPct, volumeMl, appUser.id, imageUrl);
         await checkAndTriggerAlert(bottleId, volumeMl);
+        await saveScanCalibration(appUser.bar_id, bottle.scanResult.fill_pct, fillPct);
       }
 
       router.replace('/inventory');
@@ -286,7 +290,13 @@ export default function ShelfScanScreen() {
                     {item.isNew ? item.newName : item.scanResult.brand}
                     {item.isNew ? ' (new)' : ''}
                   </Text>
-                  <Text style={styles.reviewDetail}>{item.scanResult.spirit_type}</Text>
+                  <TextInput
+                    style={styles.spiritTypeInput}
+                    value={item.editedSpiritType}
+                    onChangeText={(v) => setDetected(prev => prev.map((b, i) => i === index ? { ...b, editedSpiritType: v } : b))}
+                    placeholder="Spirit type"
+                    placeholderTextColor="#555"
+                  />
                   <View style={styles.fillBarBg}>
                     <View style={[styles.fillBarFg, { width: `${fillPct}%` as any }]} />
                   </View>
@@ -406,6 +416,17 @@ const styles = StyleSheet.create({
   },
   reviewBrand: { color: '#fff', fontSize: 16, fontWeight: '500' },
   reviewDetail: { color: '#999', fontSize: 13, marginTop: 2 },
+  spiritTypeInput: {
+    color: '#999',
+    fontSize: 13,
+    marginTop: 2,
+    marginBottom: 2,
+    paddingVertical: 2,
+    paddingHorizontal: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+    minWidth: 100,
+  },
   fillEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   fillEditInput: {
     backgroundColor: '#2a2a2a',
