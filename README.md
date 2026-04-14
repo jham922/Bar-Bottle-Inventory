@@ -6,10 +6,11 @@ A web app for tracking bar bottle inventory. Scan bottles, monitor fill levels, 
 
 ## Features
 
-- **Bottle scanning** — scan a bottle photo to identify it and record fill level
+- **Single bottle scan** — photograph a bottle; AI identifies brand, spirit type, and fill level; all fields editable before saving
+- **Shelf scan** — photograph a whole shelf; AI identifies all visible bottles at once; fill % editable per bottle before saving
 - **Inventory list** — browse all bottles with fill bars, search, and filter by spirit type
-- **Scan history** — per-bottle history of every scan with timestamps
-- **Low-stock alerts** — set a threshold (ml) per bottle; get flagged when stock runs low
+- **Bottle detail** — scan history, fill trend, low-stock alert threshold, delete
+- **Low-stock alerts** — set a threshold (ml) per bottle; flagged in inventory when stock runs low
 - **Consumption reports** — variance and consumption analytics over time
 - **Team management** — invite staff, manage roles (admin / staff)
 - **Toast POS import** — import bottle data from Toast CSV exports
@@ -19,8 +20,9 @@ A web app for tracking bar bottle inventory. Scan bottles, monitor fill levels, 
 
 - [Expo](https://expo.dev) (SDK 54) + Expo Router v6
 - React Native Web
-- [Supabase](https://supabase.com) — Postgres, Auth, RLS
+- [Supabase](https://supabase.com) — Postgres, Auth, RLS, Edge Functions
 - [Vercel](https://vercel.com) — static hosting
+- Claude Vision API (via Supabase Edge Function) — bottle identification and fill level estimation
 
 ## Local development
 
