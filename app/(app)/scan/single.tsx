@@ -354,18 +354,44 @@ export default function SingleScanScreen() {
         />
 
         <Text style={styles.fieldLabel}>Fill % — tap to correct</Text>
-        <View style={styles.pctChips}>
-          {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
-            <TouchableOpacity
-              key={v}
-              style={[styles.pctChip, fillPct === v && styles.pctChipActive]}
-              onPress={() => setEditedFillPct(String(v))}
-              activeOpacity={0.6}
-            >
-              <Text style={[styles.pctChipText, fillPct === v && styles.pctChipTextActive]}>{v}%</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {isWeb ? (
+          <View style={styles.pctChips}>
+            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
+              // @ts-ignore — native button for reliable mobile web touch
+              <button
+                key={v}
+                onClick={() => setEditedFillPct(String(v))}
+                style={{
+                  padding: '12px 14px',
+                  minWidth: 56,
+                  borderRadius: 8,
+                  border: `1px solid ${fillPct === v ? '#fff' : '#444'}`,
+                  backgroundColor: fillPct === v ? '#fff' : 'transparent',
+                  color: fillPct === v ? '#111' : '#aaa',
+                  fontSize: 15,
+                  fontWeight: fillPct === v ? '700' : 'normal',
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {v}%
+              </button>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.pctChips}>
+            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
+              <TouchableOpacity
+                key={v}
+                style={[styles.pctChip, fillPct === v && styles.pctChipActive]}
+                onPress={() => setEditedFillPct(String(v))}
+                activeOpacity={0.6}
+              >
+                <Text style={[styles.pctChipText, fillPct === v && styles.pctChipTextActive]}>{v}%</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <View style={styles.fillBarBg}>
           <View style={[styles.fillBarFg, { width: `${Math.min(fillPct, 100)}%` }]} />
