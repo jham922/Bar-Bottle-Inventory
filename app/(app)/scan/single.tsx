@@ -322,7 +322,7 @@ export default function SingleScanScreen() {
     const volumeOz = mlToOz(volumeMl);
 
     return (
-      <ScrollView style={styles.container} contentContainerStyle={styles.form}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Confirm Scan</Text>
 
         <Text style={styles.fieldLabel}>Brand (edit if wrong)</Text>
@@ -353,25 +353,19 @@ export default function SingleScanScreen() {
           placeholderTextColor="#555"
         />
 
-        <Text style={styles.fieldLabel}>Fill % — tap a value or type your own</Text>
+        <Text style={styles.fieldLabel}>Fill % — tap to correct</Text>
         <View style={styles.pctChips}>
           {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
             <TouchableOpacity
               key={v}
               style={[styles.pctChip, fillPct === v && styles.pctChipActive]}
               onPress={() => setEditedFillPct(String(v))}
+              activeOpacity={0.6}
             >
               <Text style={[styles.pctChipText, fillPct === v && styles.pctChipTextActive]}>{v}%</Text>
             </TouchableOpacity>
           ))}
         </View>
-        <TextInput
-          style={styles.input}
-          value={editedFillPct}
-          onChangeText={setEditedFillPct}
-          placeholder="0–100"
-          placeholderTextColor="#555"
-        />
 
         <View style={styles.fillBarBg}>
           <View style={[styles.fillBarFg, { width: `${Math.min(fillPct, 100)}%` }]} />
@@ -466,16 +460,18 @@ const styles = StyleSheet.create({
   fillBarBg: { height: 8, backgroundColor: '#333', borderRadius: 4, overflow: 'hidden', marginTop: 4 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
   volumeText: { color: '#aaa', fontSize: 14, marginTop: 4 },
-  pctChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  pctChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   pctChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: '#444',
+    minWidth: 56,
+    alignItems: 'center',
   },
   pctChipActive: { backgroundColor: '#fff', borderColor: '#fff' },
-  pctChipText: { color: '#888', fontSize: 13 },
+  pctChipText: { color: '#aaa', fontSize: 15 },
   pctChipTextActive: { color: '#111', fontWeight: '700' },
   message: { color: '#ccc', fontSize: 16, textAlign: 'center', padding: 24 },
   error: { color: '#f87171', fontSize: 14, padding: 8, textAlign: 'center' },
