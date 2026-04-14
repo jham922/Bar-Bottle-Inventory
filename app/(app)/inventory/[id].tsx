@@ -34,6 +34,8 @@ export default function BottleDetailScreen() {
 
   useEffect(() => {
     if (!id) return;
+    setConfirmingDelete(false);
+    setDeleting(false);
     loadData();
   }, [id]);
 
@@ -41,8 +43,9 @@ export default function BottleDetailScreen() {
     setLoading(true);
     setError(null);
     try {
-      const { data: b, error: bErr } = await supabase.from('bottles').select('*').eq('id', id).single();
+      const { data: b, error: bErr } = await supabase.from('bottles').select('*').eq('id', id).maybeSingle();
       if (bErr) throw bErr;
+      if (!b) throw new Error('Bottle not found');
       setBottle(b as Bottle);
 
       const h = await getBottleHistory(id);
@@ -66,9 +69,12 @@ export default function BottleDetailScreen() {
   async function handleDelete() {
     setDeleting(true);
     try {
-      await supabase.from('inventory_scans').delete().eq('bottle_id', id);
-      await supabase.from('alerts').delete().eq('bottle_id', id);
-      await supabase.from('bottles').delete().eq('id', id);
+      const { error: scanErr } = await supabase.from('inventory_scans').delete().eq('bottle_id', id);
+      if (scanErr) throw scanErr;
+      const { error: alertErr } = await supabase.from('alerts').delete().eq('bottle_id', id);
+      if (alertErr) throw alertErr;
+      const { error: bottleErr } = await supabase.from('bottles').delete().eq('id', id);
+      if (bottleErr) throw bottleErr;
       router.replace('/(app)/inventory');
     } catch (e: any) {
       setError(e.message ?? 'Failed to delete');
