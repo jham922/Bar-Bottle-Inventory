@@ -40,6 +40,7 @@ export default function SingleScanScreen() {
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null);
   const [editedFillPct, setEditedFillPct] = useState('');
   const [editedBrand, setEditedBrand] = useState('');
+  const [editedSpiritType, setEditedSpiritType] = useState('');
   const [newBottleName, setNewBottleName] = useState('');
   const [newBottleSizeMl, setNewBottleSizeMl] = useState('');
 
@@ -60,6 +61,7 @@ export default function SingleScanScreen() {
         newBottleSizeMl: 750,
       });
       setEditedBrand(result.brand);
+      setEditedSpiritType(result.spirit_type);
       setEditedFillPct(String(result.fill_pct));
       setStep('confirm');
     } catch (e: any) {
@@ -148,6 +150,7 @@ export default function SingleScanScreen() {
     }
     setConfirmData({ ...confirmData, newBottleName: name, newBottleSizeMl: sizeMl });
     setEditedBrand(name);
+    setEditedSpiritType(confirmData.scanResult.spirit_type);
     setEditedFillPct(String(confirmData.scanResult.fill_pct));
     setStep('confirm');
   }
@@ -169,11 +172,12 @@ export default function SingleScanScreen() {
         totalVolumeMl = confirmData.bottle.total_volume_ml;
       } else {
         const brandName = editedBrand.trim() || confirmData.scanResult.brand || 'Unknown';
+        const spiritType = editedSpiritType.trim() || confirmData.scanResult.spirit_type || 'Other';
         const sizeMl = confirmData.newBottleSizeMl || 750;
         const newBottle = await createBottle(
           appUser.bar_id,
           brandName,
-          confirmData.scanResult.spirit_type,
+          spiritType,
           sizeMl,
         );
         bottleId = newBottle.id;
@@ -308,21 +312,23 @@ export default function SingleScanScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.form}>
         <Text style={styles.title}>Confirm Scan</Text>
 
-        <Text style={styles.fieldLabel}>Brand{!confirmData.bottle ? ' (edit if wrong)' : ''}</Text>
-        {confirmData.bottle ? (
-          <Text style={styles.fieldValue}>{confirmData.scanResult.brand}</Text>
-        ) : (
-          <TextInput
-            style={styles.input}
-            value={editedBrand}
-            onChangeText={setEditedBrand}
-            placeholder="Enter brand name"
-            placeholderTextColor="#555"
-          />
-        )}
+        <Text style={styles.fieldLabel}>Brand (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedBrand}
+          onChangeText={setEditedBrand}
+          placeholder="Enter brand name"
+          placeholderTextColor="#555"
+        />
 
-        <Text style={styles.fieldLabel}>Spirit Type</Text>
-        <Text style={styles.fieldValue}>{confirmData.scanResult.spirit_type}</Text>
+        <Text style={styles.fieldLabel}>Spirit Type (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedSpiritType}
+          onChangeText={setEditedSpiritType}
+          placeholder="e.g. Whiskey, Gin, Rum…"
+          placeholderTextColor="#555"
+        />
 
         <Text style={styles.fieldLabel}>Fill % (edit if wrong)</Text>
         <TextInput

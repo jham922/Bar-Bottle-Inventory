@@ -61,6 +61,28 @@ export default function BottleDetailScreen() {
     }
   }
 
+  async function handleDelete() {
+    Alert.alert(
+      'Delete Bottle',
+      `Delete "${bottle?.brand}" and all its scan history? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive', onPress: async () => {
+            try {
+              await supabase.from('inventory_scans').delete().eq('bottle_id', id);
+              await supabase.from('alerts').delete().eq('bottle_id', id);
+              await supabase.from('bottles').delete().eq('id', id);
+              router.replace('/(app)/inventory');
+            } catch (e: any) {
+              Alert.alert('Error', e.message ?? 'Failed to delete');
+            }
+          },
+        },
+      ]
+    );
+  }
+
   async function handleSaveThreshold() {
     const ml = parseInt(thresholdMl, 10);
     if (isNaN(ml) || ml <= 0) {
@@ -145,6 +167,12 @@ export default function BottleDetailScreen() {
         </View>
       )}
 
+      {appUser?.role === 'admin' && (
+        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+          <Text style={styles.deleteButtonText}>Delete Bottle</Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Scan History</Text>
         {history.length === 0 ? (
@@ -205,6 +233,8 @@ const styles = StyleSheet.create({
   historyPct: { color: '#ccc', fontSize: 14 },
   historyDate: { color: '#555', fontSize: 12 },
   emptyText: { color: '#555', fontSize: 14 },
+  deleteButton: { marginTop: 24, borderWidth: 1, borderColor: '#f87171', borderRadius: 8, padding: 14, alignItems: 'center' },
+  deleteButtonText: { color: '#f87171', fontWeight: '600', fontSize: 15 },
   error: { color: '#f87171', fontSize: 14, marginBottom: 8 },
   link: { color: '#aaa', fontSize: 15 },
 });
