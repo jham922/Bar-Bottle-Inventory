@@ -6,37 +6,56 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const SINGLE_PROMPT = `You are analyzing a photo of a single liquor bottle for a bar inventory system.
 
-To estimate fill_pct accurately:
-1. Identify the bottle's main cylindrical body only — ignore the base (thick glass at bottom), the shoulder (where bottle narrows), and the neck.
-2. Within that cylindrical body, find the air gap: the empty space above the liquid surface.
-3. Estimate what percentage of the cylindrical body is air gap, then subtract from 100 to get fill_pct.
-4. Round DOWN to the nearest 5. It is better to slightly underestimate than overestimate.
-5. A bottle with a small air gap is at most 85%, not 95-100%. A bottle where liquid fills half the body is 50%.
+Your ONLY job for fill_pct is to measure the AIR GAP — the empty space at the top of the bottle.
 
-Return ONLY valid JSON with no markdown, no explanation, no code fences. The JSON must have exactly these fields:
+Step-by-step:
+1. Find the liquid surface line (the meniscus) inside the bottle.
+2. Measure the distance from the liquid surface to the very top of the liquid-containing area (base of the neck).
+3. Express that air gap as a percentage of the cylindrical body height.
+4. fill_pct = 100 minus the air gap percentage.
+5. Round to the nearest 10 (e.g. 35 → 30, 42 → 40).
+
+Critical calibration:
+- A virtually full bottle (tiny sliver of air) = 90%
+- Liquid fills about 3/4 of the body = 70-75%
+- Liquid fills about half the body = 50%
+- Liquid fills about 1/4 of the body = 20-25%
+- Almost empty (small puddle at bottom) = 10%
+- Do NOT round everything up to 80-100%. Most opened bottles are 20-70%.
+
+Return ONLY valid JSON with no markdown, no explanation, no code fences:
 {
   "brand": "exact brand name as it appears on the label",
   "spirit_type": "one of: Whiskey, Gin, Vodka, Rum, Tequila, Mezcal, Liqueur, Amaro, Brandy, Other",
-  "fill_pct": <integer 0-100 representing how full the cylindrical body is, rounded down to nearest 5>,
+  "fill_pct": <integer 0-100 rounded to nearest 10>,
   "confidence": "high" | "medium" | "low",
   "known_bottle": <true if you can clearly identify the brand, false if uncertain or label is not visible>
 }`;
 
 const SHELF_PROMPT = `You are analyzing a photo of a bar shelf with multiple liquor bottles for an inventory system.
 
-To estimate fill_pct accurately for each bottle:
-1. Identify the bottle's main cylindrical body only — ignore the base (thick glass at bottom), the shoulder (where bottle narrows), and the neck.
-2. Within that cylindrical body, find the air gap: the empty space above the liquid surface.
-3. Estimate what percentage of the cylindrical body is air gap, then subtract from 100 to get fill_pct.
-4. Round DOWN to the nearest 5. It is better to slightly underestimate than overestimate.
-5. A bottle with a small air gap is at most 85%, not 95-100%. A bottle where liquid fills half the body is 50%.
+For each bottle, measure the AIR GAP — the empty space at the top of the bottle.
 
-Return ONLY valid JSON with no markdown, no explanation, no code fences. The JSON must be an array of objects, one per visible bottle:
+Step-by-step for each bottle:
+1. Find the liquid surface line (the meniscus) inside the bottle.
+2. Measure the air gap from the liquid surface to the base of the neck as a percentage of the cylindrical body.
+3. fill_pct = 100 minus the air gap percentage.
+4. Round to the nearest 10.
+
+Critical calibration:
+- A virtually full bottle = 90%
+- 3/4 full = 70-75%
+- Half full = 50%
+- 1/4 full = 20-25%
+- Almost empty = 10%
+- Do NOT round everything up to 80-100%. Most opened bottles are 20-70%.
+
+Return ONLY valid JSON with no markdown, no explanation, no code fences. An array, one object per visible bottle:
 [
   {
     "brand": "exact brand name as it appears on the label",
     "spirit_type": "one of: Whiskey, Gin, Vodka, Rum, Tequila, Mezcal, Liqueur, Amaro, Brandy, Other",
-    "fill_pct": <integer 0-100 representing how full the cylindrical body is, rounded down to nearest 5>,
+    "fill_pct": <integer 0-100 rounded to nearest 10>,
     "confidence": "high" | "medium" | "low",
     "known_bottle": <true if you can clearly identify the brand, false if uncertain>
   }

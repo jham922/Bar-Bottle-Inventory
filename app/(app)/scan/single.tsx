@@ -353,12 +353,22 @@ export default function SingleScanScreen() {
           placeholderTextColor="#555"
         />
 
-        <Text style={styles.fieldLabel}>Fill % (edit if wrong)</Text>
+        <Text style={styles.fieldLabel}>Fill % — tap a value or type your own</Text>
+        <View style={styles.pctChips}>
+          {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
+            <TouchableOpacity
+              key={v}
+              style={[styles.pctChip, fillPct === v && styles.pctChipActive]}
+              onPress={() => setEditedFillPct(String(v))}
+            >
+              <Text style={[styles.pctChipText, fillPct === v && styles.pctChipTextActive]}>{v}%</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <TextInput
           style={styles.input}
           value={editedFillPct}
           onChangeText={setEditedFillPct}
-          keyboardType="numeric"
           placeholder="0–100"
           placeholderTextColor="#555"
         />
@@ -456,6 +466,17 @@ const styles = StyleSheet.create({
   fillBarBg: { height: 8, backgroundColor: '#333', borderRadius: 4, overflow: 'hidden', marginTop: 4 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
   volumeText: { color: '#aaa', fontSize: 14, marginTop: 4 },
+  pctChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  pctChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#444',
+  },
+  pctChipActive: { backgroundColor: '#fff', borderColor: '#fff' },
+  pctChipText: { color: '#888', fontSize: 13 },
+  pctChipTextActive: { color: '#111', fontWeight: '700' },
   message: { color: '#ccc', fontSize: 16, textAlign: 'center', padding: 24 },
   error: { color: '#f87171', fontSize: 14, padding: 8, textAlign: 'center' },
 });
