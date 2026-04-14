@@ -29,6 +29,7 @@ interface DetectedBottle {
   isNew: boolean;
   newName: string;
   newSizeMl: string;
+  editedFillPct: string;
 }
 
 export default function ShelfScanScreen() {
@@ -61,7 +62,8 @@ export default function ShelfScanScreen() {
             resolvedTotalMl: existing?.total_volume_ml ?? null,
             isNew: !existing,
             newName: r.brand,
-            newSizeMl: '750',
+            newSizeMl: String(existing?.total_volume_ml ?? 750),
+            editedFillPct: String(r.fill_pct),
           };
         })
       );
@@ -192,8 +194,9 @@ export default function ShelfScanScreen() {
           totalMl = created.total_volume_ml;
         }
 
-        const volumeMl = computeVolumeRemaining(bottle.scanResult.fill_pct, totalMl);
-        await saveInventoryScan(bottleId, bottle.scanResult.fill_pct, volumeMl, appUser.id, imageUrl);
+        const fillPct = Math.min(100, Math.max(0, parseInt(bottle.editedFillPct, 10) || 0));
+        const volumeMl = computeVolumeRemaining(fillPct, totalMl);
+        await saveInventoryScan(bottleId, fillPct, volumeMl, appUser.id, imageUrl);
         await checkAndTriggerAlert(bottleId, volumeMl);
       }
 
@@ -271,10 +274,11 @@ export default function ShelfScanScreen() {
           data={detected}
           keyExtractor={(_, i) => String(i)}
           style={{ flex: 1 }}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
+            const fillPct = Math.min(100, Math.max(0, parseInt(item.editedFillPct, 10) || 0));
             const totalMl = item.resolvedTotalMl ?? (parseInt(item.newSizeMl, 10) || 750);
-            const volumeMl = computeVolumeRemaining(item.scanResult.fill_pct, totalMl);
-            const low = item.scanResult.fill_pct < 25;
+            const volumeMl = computeVolumeRemaining(fillPct, totalMl);
+            const low = fillPct < 25;
             return (
               <View style={styles.reviewRow}>
                 <View style={{ flex: 1 }}>
@@ -284,12 +288,22 @@ export default function ShelfScanScreen() {
                   </Text>
                   <Text style={styles.reviewDetail}>{item.scanResult.spirit_type}</Text>
                   <View style={styles.fillBarBg}>
-                    <View style={[styles.fillBarFg, { width: `${item.scanResult.fill_pct}%` }]} />
+                    <View style={[styles.fillBarFg, { width: `${fillPct}%` as any }]} />
                   </View>
-                  <Text style={styles.reviewDetail}>
-                    {item.scanResult.fill_pct}% · {volumeMl} ml · {mlToOz(volumeMl)} oz
-                    {low ? ' ⚠️ Low' : ''}
-                  </Text>
+                  <View style={styles.fillEditRow}>
+                    <TextInput
+                      style={styles.fillEditInput}
+                      value={item.editedFillPct}
+                      onChangeText={(v) => setDetected(prev => prev.map((b, i) => i === index ? { ...b, editedFillPct: v } : b))}
+                      keyboardType="decimal-pad"
+                      maxLength={3}
+                      placeholder="0–100"
+                      placeholderTextColor="#555"
+                    />
+                    <Text style={styles.reviewDetail}>
+                      % · {volumeMl} ml · {mlToOz(volumeMl)} oz{low ? ' ⚠️' : ''}
+                    </Text>
+                  </View>
                 </View>
               </View>
             );
@@ -392,6 +406,19 @@ const styles = StyleSheet.create({
   },
   reviewBrand: { color: '#fff', fontSize: 16, fontWeight: '500' },
   reviewDetail: { color: '#999', fontSize: 13, marginTop: 2 },
+  fillEditRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  fillEditInput: {
+    backgroundColor: '#2a2a2a',
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 6,
+    color: '#fff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 14,
+    width: 54,
+    textAlign: 'center',
+  },
   fillBarBg: { height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden', marginTop: 4, marginBottom: 2 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 3 },
   footer: {
