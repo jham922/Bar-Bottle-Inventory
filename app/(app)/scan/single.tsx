@@ -353,31 +353,25 @@ export default function SingleScanScreen() {
           placeholderTextColor="#555"
         />
 
-        <Text style={styles.fieldLabel}>Fill % — tap to correct</Text>
+        <Text style={styles.fieldLabel}>Fill % — drag to correct</Text>
+        <Text style={styles.fillPctDisplay}>{fillPct}%</Text>
         {isWeb ? (
-          <View style={styles.pctChips}>
-            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
-              // @ts-ignore — native button for reliable mobile web touch
-              <button
-                key={v}
-                onClick={() => setEditedFillPct(String(v))}
-                style={{
-                  padding: '12px 14px',
-                  minWidth: 56,
-                  borderRadius: 8,
-                  border: `1px solid ${fillPct === v ? '#fff' : '#444'}`,
-                  backgroundColor: fillPct === v ? '#fff' : 'transparent',
-                  color: fillPct === v ? '#111' : '#aaa',
-                  fontSize: 15,
-                  fontWeight: fillPct === v ? '700' : 'normal',
-                  cursor: 'pointer',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-              >
-                {v}%
-              </button>
-            ))}
-          </View>
+          // @ts-ignore
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="5"
+            value={fillPct}
+            onChange={(e: any) => setEditedFillPct(e.target.value)}
+            style={{
+              width: '100%',
+              height: 44,
+              accentColor: '#fff',
+              cursor: 'pointer',
+              backgroundColor: 'transparent',
+            }}
+          />
         ) : (
           <View style={styles.pctChips}>
             {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
@@ -486,6 +480,7 @@ const styles = StyleSheet.create({
   fillBarBg: { height: 8, backgroundColor: '#333', borderRadius: 4, overflow: 'hidden', marginTop: 4 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
   volumeText: { color: '#aaa', fontSize: 14, marginTop: 4 },
+  fillPctDisplay: { color: '#fff', fontSize: 32, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
   pctChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   pctChip: {
     paddingHorizontal: 14,
