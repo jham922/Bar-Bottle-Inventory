@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAppUser } from '@/lib/useAppUser';
 import { getInventoryList, SPIRIT_TYPES, BottleWithLatestScan } from '@/lib/inventory';
 import { mlToOz } from '@/lib/scan';
@@ -38,6 +39,8 @@ export default function InventoryScreen() {
   }, [appUser, search, spiritFilter]);
 
   useEffect(() => { loadBottles(); }, [loadBottles]);
+
+  useFocusEffect(useCallback(() => { loadBottles(); }, [loadBottles]));
 
   return (
     <View style={styles.container}>
