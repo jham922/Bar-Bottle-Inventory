@@ -133,10 +133,6 @@ serve(async (req: Request) => {
     const prompt = basePrompt + calibrationText;
     const imageMediaType = mediaType ?? 'image/jpeg';
 
-    // Prefill forces the model to start the response with the opening bracket/brace,
-    // preventing any explanatory text before the JSON.
-    const prefill = mode === 'shelf' ? '[' : '{';
-
     // Call Claude Vision API
     const claudeRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -148,22 +144,16 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image',
-                source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
-              },
-              { type: 'text', text: prompt },
-            ],
-          },
-          {
-            role: 'assistant',
-            content: prefill,
-          },
-        ],
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
+            },
+            { type: 'text', text: prompt },
+          ],
+        }],
       }),
     });
 
@@ -175,14 +165,18 @@ serve(async (req: Request) => {
     const claudeData = await claudeRes.json();
     const rawText = claudeData.content?.[0]?.text ?? '';
 
-    // Prepend the prefill character (not included in the completion) then strip any fences
-    const cleaned = (prefill + rawText).replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    // Strip markdown fences, then try to extract the JSON object/array
+    // even if the model added explanatory text around it
+    const stripped = rawText.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    const pattern = mode === 'shelf' ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/;
+    const match = stripped.match(pattern);
+    const cleaned = match ? match[0] : stripped;
 
     let result;
     try {
       result = JSON.parse(cleaned);
     } catch {
-      return json({ ok: false, error: `Could not parse AI response: ${cleaned}` }, 502);
+      return json({ ok: false, error: `Could not parse AI response: ${stripped.slice(0, 200)}` }, 502);
     }
 
     return json({ ok: true, result });
