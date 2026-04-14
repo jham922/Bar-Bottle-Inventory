@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
 import { analyzeBottleImage, uploadScanImage, mlToOz, computeVolumeRemaining } from '@/lib/scan';
 import { findBottleByBrand, createBottle, saveInventoryScan, checkAndTriggerAlert } from '@/lib/bottles';
+import { supabase } from '@/lib/supabase';
 import { SingleScanResult } from '@/types/scan';
 
 type Step = 'camera' | 'analyzing' | 'new_bottle' | 'confirm' | 'saving';
@@ -170,6 +171,15 @@ export default function SingleScanScreen() {
       if (confirmData.bottle) {
         bottleId = confirmData.bottle.id;
         totalVolumeMl = confirmData.bottle.total_volume_ml;
+        // Update brand/spirit if user changed them
+        const brandName = editedBrand.trim();
+        const spiritType = editedSpiritType.trim();
+        if (brandName || spiritType) {
+          await supabase
+            .from('bottles')
+            .update({ brand: brandName || undefined, spirit_type: spiritType || undefined })
+            .eq('id', bottleId);
+        }
       } else {
         const brandName = editedBrand.trim() || confirmData.scanResult.brand || 'Unknown';
         const spiritType = editedSpiritType.trim() || confirmData.scanResult.spirit_type || 'Other';

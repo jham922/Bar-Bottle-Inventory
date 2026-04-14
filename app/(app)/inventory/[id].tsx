@@ -29,6 +29,8 @@ export default function BottleDetailScreen() {
   // Alert threshold editing (admin only)
   const [thresholdMl, setThresholdMl] = useState('');
   const [savingThreshold, setSavingThreshold] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -62,25 +64,17 @@ export default function BottleDetailScreen() {
   }
 
   async function handleDelete() {
-    Alert.alert(
-      'Delete Bottle',
-      `Delete "${bottle?.brand}" and all its scan history? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete', style: 'destructive', onPress: async () => {
-            try {
-              await supabase.from('inventory_scans').delete().eq('bottle_id', id);
-              await supabase.from('alerts').delete().eq('bottle_id', id);
-              await supabase.from('bottles').delete().eq('id', id);
-              router.replace('/(app)/inventory');
-            } catch (e: any) {
-              Alert.alert('Error', e.message ?? 'Failed to delete');
-            }
-          },
-        },
-      ]
-    );
+    setDeleting(true);
+    try {
+      await supabase.from('inventory_scans').delete().eq('bottle_id', id);
+      await supabase.from('alerts').delete().eq('bottle_id', id);
+      await supabase.from('bottles').delete().eq('id', id);
+      router.replace('/(app)/inventory');
+    } catch (e: any) {
+      setError(e.message ?? 'Failed to delete');
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
   }
 
   async function handleSaveThreshold() {
@@ -167,10 +161,23 @@ export default function BottleDetailScreen() {
         </View>
       )}
 
-      {appUser?.role === 'admin' && (
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+      {appUser?.role === 'admin' && !confirmingDelete && (
+        <TouchableOpacity style={styles.deleteButton} onPress={() => setConfirmingDelete(true)}>
           <Text style={styles.deleteButtonText}>Delete Bottle</Text>
         </TouchableOpacity>
+      )}
+      {appUser?.role === 'admin' && confirmingDelete && (
+        <View style={styles.deleteConfirm}>
+          <Text style={styles.deleteConfirmText}>Delete "{bottle.brand}" and all scan history? This cannot be undone.</Text>
+          <View style={styles.deleteConfirmRow}>
+            <TouchableOpacity style={styles.deleteConfirmBtn} onPress={handleDelete} disabled={deleting}>
+              <Text style={styles.deleteConfirmBtnText}>{deleting ? 'Deleting…' : 'Yes, Delete'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteCancelBtn} onPress={() => setConfirmingDelete(false)}>
+              <Text style={styles.deleteCancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
 
       <View style={styles.section}>
@@ -235,6 +242,13 @@ const styles = StyleSheet.create({
   emptyText: { color: '#555', fontSize: 14 },
   deleteButton: { marginTop: 24, borderWidth: 1, borderColor: '#f87171', borderRadius: 8, padding: 14, alignItems: 'center' },
   deleteButtonText: { color: '#f87171', fontWeight: '600', fontSize: 15 },
+  deleteConfirm: { marginTop: 24, borderWidth: 1, borderColor: '#f87171', borderRadius: 8, padding: 16, gap: 12 },
+  deleteConfirmText: { color: '#f87171', fontSize: 14 },
+  deleteConfirmRow: { flexDirection: 'row', gap: 10 },
+  deleteConfirmBtn: { flex: 1, backgroundColor: '#f87171', borderRadius: 8, padding: 12, alignItems: 'center' },
+  deleteConfirmBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  deleteCancelBtn: { flex: 1, borderWidth: 1, borderColor: '#555', borderRadius: 8, padding: 12, alignItems: 'center' },
+  deleteCancelBtnText: { color: '#aaa', fontSize: 14 },
   error: { color: '#f87171', fontSize: 14, marginBottom: 8 },
   link: { color: '#aaa', fontSize: 15 },
 });
