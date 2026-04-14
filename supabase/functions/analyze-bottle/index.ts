@@ -133,6 +133,10 @@ serve(async (req: Request) => {
     const prompt = basePrompt + calibrationText;
     const imageMediaType = mediaType ?? 'image/jpeg';
 
+    // Prefill forces the model to start the response with the opening bracket/brace,
+    // preventing any explanatory text before the JSON.
+    const prefill = mode === 'shelf' ? '[' : '{';
+
     // Call Claude Vision API
     const claudeRes = await fetch(ANTHROPIC_URL, {
       method: 'POST',
@@ -144,16 +148,22 @@ serve(async (req: Request) => {
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
         max_tokens: 1024,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
-            },
-            { type: 'text', text: prompt },
-          ],
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: { type: 'base64', media_type: imageMediaType, data: imageBase64 },
+              },
+              { type: 'text', text: prompt },
+            ],
+          },
+          {
+            role: 'assistant',
+            content: prefill,
+          },
+        ],
       }),
     });
 
@@ -163,17 +173,16 @@ serve(async (req: Request) => {
     }
 
     const claudeData = await claudeRes.json();
-    const text = claudeData.content?.[0]?.text ?? '';
+    const rawText = claudeData.content?.[0]?.text ?? '';
 
-
-    // Strip any accidental markdown fences
-    const cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+    // Prepend the prefill character (not included in the completion) then strip any fences
+    const cleaned = (prefill + rawText).replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
 
     let result;
     try {
       result = JSON.parse(cleaned);
     } catch {
-      return json({ ok: false, error: `Could not parse AI response: ${text}` }, 502);
+      return json({ ok: false, error: `Could not parse AI response: ${cleaned}` }, 502);
     }
 
     return json({ ok: true, result });
