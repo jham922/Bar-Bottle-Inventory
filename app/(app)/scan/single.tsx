@@ -325,36 +325,9 @@ export default function SingleScanScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Confirm Scan</Text>
 
-        <Text style={styles.fieldLabel}>Brand (edit if wrong)</Text>
-        <TextInput
-          style={styles.input}
-          value={editedBrand}
-          onChangeText={setEditedBrand}
-          placeholder="Enter brand name"
-          placeholderTextColor="#555"
-        />
-
-        <Text style={styles.fieldLabel}>Spirit Type (edit if wrong)</Text>
-        <TextInput
-          style={styles.input}
-          value={editedSpiritType}
-          onChangeText={setEditedSpiritType}
-          placeholder="e.g. Whiskey, Gin, Rum…"
-          placeholderTextColor="#555"
-        />
-
-        <Text style={styles.fieldLabel}>Bottle Size ml (edit if wrong)</Text>
-        <TextInput
-          style={styles.input}
-          value={editedBottleSizeMl}
-          onChangeText={setEditedBottleSizeMl}
-          keyboardType="numeric"
-          placeholder="e.g. 750"
-          placeholderTextColor="#555"
-        />
-
-        <Text style={styles.fieldLabel}>Fill % — drag to correct</Text>
+        {/* Fill % — shown first so it's always visible */}
         <Text style={styles.fillPctDisplay}>{fillPct}%</Text>
+        <Text style={styles.fieldLabel}>Fill % — drag slider to correct</Text>
         {isWeb ? (
           // @ts-ignore
           <input
@@ -390,8 +363,35 @@ export default function SingleScanScreen() {
         <View style={styles.fillBarBg}>
           <View style={[styles.fillBarFg, { width: `${Math.min(fillPct, 100)}%` }]} />
         </View>
-
         <Text style={styles.volumeText}>{volumeMl} ml · {volumeOz} oz remaining</Text>
+
+        <Text style={styles.fieldLabel}>Brand (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedBrand}
+          onChangeText={setEditedBrand}
+          placeholder="Enter brand name"
+          placeholderTextColor="#555"
+        />
+
+        <Text style={styles.fieldLabel}>Spirit Type (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedSpiritType}
+          onChangeText={setEditedSpiritType}
+          placeholder="e.g. Whiskey, Gin, Rum…"
+          placeholderTextColor="#555"
+        />
+
+        <Text style={styles.fieldLabel}>Bottle Size ml (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedBottleSizeMl}
+          onChangeText={setEditedBottleSizeMl}
+          keyboardType="numeric"
+          placeholder="e.g. 750"
+          placeholderTextColor="#555"
+        />
 
         {error && <Text style={styles.error}>{error}</Text>}
 
