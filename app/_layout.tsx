@@ -11,13 +11,31 @@ export default function RootLayout() {
   const segments = useSegments();
 
   useEffect(() => {
+    let cancelled = false;
+
+    // Resolve initial session immediately so refresh never shows a blank screen
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (cancelled) return;
+      if (session?.user) {
+        try {
+          const appUser = await getAppUser(session.user.id);
+          if (!cancelled) setUser(appUser);
+        } catch {
+          if (!cancelled) setUser(null);
+        }
+      } else {
+        if (!cancelled) setUser(null);
+      }
+      if (!cancelled) setLoading(false);
+    });
+
+    // Keep listening for sign-in / sign-out events
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         try {
           const appUser = await getAppUser(session.user.id);
           setUser(appUser);
-        } catch (err) {
-          console.error('Failed to load user profile:', err);
+        } catch {
           setUser(null);
         }
       } else {
@@ -25,7 +43,11 @@ export default function RootLayout() {
       }
       setLoading(false);
     });
-    return () => listener.subscription.unsubscribe();
+
+    return () => {
+      cancelled = true;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
