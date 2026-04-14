@@ -42,6 +42,7 @@ export default function SingleScanScreen() {
   const [editedFillPct, setEditedFillPct] = useState('');
   const [editedBrand, setEditedBrand] = useState('');
   const [editedSpiritType, setEditedSpiritType] = useState('');
+  const [editedBottleSizeMl, setEditedBottleSizeMl] = useState('');
   const [newBottleName, setNewBottleName] = useState('');
   const [newBottleSizeMl, setNewBottleSizeMl] = useState('');
 
@@ -64,6 +65,7 @@ export default function SingleScanScreen() {
       setEditedBrand(result.brand);
       setEditedSpiritType(result.spirit_type);
       setEditedFillPct(String(result.fill_pct));
+      setEditedBottleSizeMl(String(existing?.total_volume_ml ?? 750));
       setStep('confirm');
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -153,14 +155,20 @@ export default function SingleScanScreen() {
     setEditedBrand(name);
     setEditedSpiritType(confirmData.scanResult.spirit_type);
     setEditedFillPct(String(confirmData.scanResult.fill_pct));
+    setEditedBottleSizeMl(String(sizeMl));
     setStep('confirm');
   }
 
   async function handleSave() {
     if (!confirmData || !appUser) return;
     const fillPct = parseInt(editedFillPct, 10);
+    const sizeMl = parseInt(editedBottleSizeMl, 10);
     if (isNaN(fillPct) || fillPct < 0 || fillPct > 100) {
       Alert.alert('Invalid fill %', 'Enter a number between 0 and 100.');
+      return;
+    }
+    if (isNaN(sizeMl) || sizeMl <= 0) {
+      Alert.alert('Invalid bottle size', 'Enter a valid size in ml.');
       return;
     }
     setStep('saving');
@@ -170,26 +178,21 @@ export default function SingleScanScreen() {
 
       if (confirmData.bottle) {
         bottleId = confirmData.bottle.id;
-        totalVolumeMl = confirmData.bottle.total_volume_ml;
-        // Update brand/spirit if user changed them
+        totalVolumeMl = sizeMl;
         const brandName = editedBrand.trim();
         const spiritType = editedSpiritType.trim();
-        if (brandName || spiritType) {
-          await supabase
-            .from('bottles')
-            .update({ brand: brandName || undefined, spirit_type: spiritType || undefined })
-            .eq('id', bottleId);
-        }
+        await supabase
+          .from('bottles')
+          .update({
+            brand: brandName || undefined,
+            spirit_type: spiritType || undefined,
+            total_volume_ml: sizeMl,
+          })
+          .eq('id', bottleId);
       } else {
         const brandName = editedBrand.trim() || confirmData.scanResult.brand || 'Unknown';
         const spiritType = editedSpiritType.trim() || confirmData.scanResult.spirit_type || 'Other';
-        const sizeMl = confirmData.newBottleSizeMl || 750;
-        const newBottle = await createBottle(
-          appUser.bar_id,
-          brandName,
-          spiritType,
-          sizeMl,
-        );
+        const newBottle = await createBottle(appUser.bar_id, brandName, spiritType, sizeMl);
         bottleId = newBottle.id;
         totalVolumeMl = newBottle.total_volume_ml;
       }
@@ -314,7 +317,7 @@ export default function SingleScanScreen() {
 
   if (step === 'confirm' && confirmData) {
     const fillPct = parseInt(editedFillPct, 10) || 0;
-    const totalMl = confirmData.bottle?.total_volume_ml ?? confirmData.newBottleSizeMl;
+    const totalMl = parseInt(editedBottleSizeMl, 10) || confirmData.bottle?.total_volume_ml || confirmData.newBottleSizeMl;
     const volumeMl = computeVolumeRemaining(fillPct, totalMl);
     const volumeOz = mlToOz(volumeMl);
 
@@ -337,6 +340,16 @@ export default function SingleScanScreen() {
           value={editedSpiritType}
           onChangeText={setEditedSpiritType}
           placeholder="e.g. Whiskey, Gin, Rum…"
+          placeholderTextColor="#555"
+        />
+
+        <Text style={styles.fieldLabel}>Bottle Size ml (edit if wrong)</Text>
+        <TextInput
+          style={styles.input}
+          value={editedBottleSizeMl}
+          onChangeText={setEditedBottleSizeMl}
+          keyboardType="numeric"
+          placeholder="e.g. 750"
           placeholderTextColor="#555"
         />
 
