@@ -2,8 +2,7 @@
   "buildCommand": "npx expo export -p web",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/inventory/:id", "destination": "/inventory/[id].html" },
-    { "source": "/recipes/:id", "destination": "/recipes/[id].html" }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
     {
