@@ -42,7 +42,8 @@ export default function ShelfScanScreen() {
   const [step, setStep] = useState<Step>('camera');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [detected, setDetected] = useState<DetectedBottle[]>([]);
-  const [unknownQueue, setUnknownQueue] = useState<number[]>([]); // indices into detected
+  const [sectionCount, setSectionCount] = useState(0);
+  const [unknownQueue, setUnknownQueue] = useState<number[]>([]);
   const [currentUnknown, setCurrentUnknown] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,7 +56,7 @@ export default function ShelfScanScreen() {
       const calibrations = await getRecentCalibrations(appUser.bar_id);
       const results = await analyzeBottleImage(base64, 'shelf', mediaType, calibrations) as SingleScanResult[];
 
-      const bottles: DetectedBottle[] = await Promise.all(
+      const newBottles: DetectedBottle[] = await Promise.all(
         results.map(async (r) => {
           const existing = await findBottleByBrand(appUser.bar_id, r.brand);
           return {
@@ -71,15 +72,23 @@ export default function ShelfScanScreen() {
         })
       );
 
-      setDetected(bottles);
-      const unknownIndices = bottles.map((b, i) => b.isNew ? i : -1).filter(i => i >= 0);
-      setUnknownQueue(unknownIndices);
-      setCurrentUnknown(0);
+      setDetected(prev => [...prev, ...newBottles]);
+      setSectionCount(prev => prev + 1);
       setStep('review');
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
       setStep('camera');
     }
+  }
+
+  function handleStartOver() {
+    setDetected([]);
+    setUnknownQueue([]);
+    setCurrentUnknown(0);
+    setSectionCount(0);
+    setImageUri(null);
+    setError(null);
+    setStep('camera');
   }
 
   function compressImage(dataUrl: string): Promise<string> {
@@ -150,7 +159,11 @@ export default function ShelfScanScreen() {
   }
 
   function handleReviewSaveAll() {
-    if (unknownQueue.length > 0) {
+    // Recalculate unknowns fresh from current detected list
+    const unknownIndices = detected.map((b, i) => b.isNew ? i : -1).filter(i => i >= 0);
+    setUnknownQueue(unknownIndices);
+    setCurrentUnknown(0);
+    if (unknownIndices.length > 0) {
       setStep('unknown_queue');
     } else {
       commitSave();
@@ -212,14 +225,28 @@ export default function ShelfScanScreen() {
   }
 
   if (step === 'camera') {
+    const isAddingSection = sectionCount > 0;
+
     if (isWeb) {
       return (
         <View style={[styles.container, styles.centered]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.webBack}>
-            <Text style={styles.webBackText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.webTitle}>Shelf Scan</Text>
-          <Text style={styles.webHint}>Take a photo of the shelf. Claude will identify all visible bottles at once.</Text>
+          {isAddingSection ? (
+            <TouchableOpacity onPress={() => setStep('review')} style={styles.webBack}>
+              <Text style={styles.webBackText}>← Back to review</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => router.back()} style={styles.webBack}>
+              <Text style={styles.webBackText}>← Back</Text>
+            </TouchableOpacity>
+          )}
+          <Text style={styles.webTitle}>
+            {isAddingSection ? `Section ${sectionCount + 1}` : 'Shelf Scan'}
+          </Text>
+          <Text style={styles.webHint}>
+            {isAddingSection
+              ? `${detected.length} bottle${detected.length !== 1 ? 's' : ''} scanned so far. Capture the next section of the shelf.`
+              : 'Take a photo of the shelf. Claude will identify all visible bottles at once.'}
+          </Text>
           <TouchableOpacity style={styles.webCaptureBtn} onPress={handleWebCapture}>
             <Text style={styles.webCaptureBtnText}>📷  Take Photo</Text>
           </TouchableOpacity>
@@ -244,13 +271,18 @@ export default function ShelfScanScreen() {
       <View style={styles.container}>
         <CameraView ref={cameraRef} style={styles.camera} facing="back">
           <View style={styles.overlay}>
-            <Text style={styles.guideLabel}>Point at shelf and capture</Text>
+            <Text style={styles.guideLabel}>
+              {isAddingSection ? `Section ${sectionCount + 1} — Point at next shelf area` : 'Point at shelf and capture'}
+            </Text>
           </View>
         </CameraView>
         {error && <Text style={styles.error}>{error}</Text>}
         <View style={styles.controls}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Back</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={isAddingSection ? () => setStep('review') : () => router.back()}
+          >
+            <Text style={styles.backButtonText}>{isAddingSection ? 'Review' : 'Back'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.captureButton} onPress={handleNativeCapture}>
             <View style={styles.captureInner} />
@@ -265,15 +297,20 @@ export default function ShelfScanScreen() {
     return (
       <View style={[styles.container, styles.centered]}>
         <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.message}>{step === 'analyzing' ? 'Analyzing shelf...' : 'Saving scans...'}</Text>
+        <Text style={styles.message}>
+          {step === 'analyzing' ? `Analyzing section ${sectionCount + 1}...` : 'Saving scans...'}
+        </Text>
       </View>
     );
   }
 
   if (step === 'review') {
+    const newCount = detected.filter(b => b.isNew).length;
     return (
       <View style={styles.container}>
-        <Text style={styles.sectionTitle}>Detected {detected.length} bottle{detected.length !== 1 ? 's' : ''}</Text>
+        <Text style={styles.sectionTitle}>
+          {detected.length} bottle{detected.length !== 1 ? 's' : ''} · {sectionCount} section{sectionCount !== 1 ? 's' : ''}
+        </Text>
         <FlatList
           data={detected}
           keyExtractor={(_, i) => String(i)}
@@ -315,18 +352,27 @@ export default function ShelfScanScreen() {
                     </Text>
                   </View>
                 </View>
+                <TouchableOpacity
+                  style={styles.deleteBtn}
+                  onPress={() => setDetected(prev => prev.filter((_, i) => i !== index))}
+                >
+                  <Text style={styles.deleteBtnText}>✕</Text>
+                </TouchableOpacity>
               </View>
             );
           }}
         />
         {error && <Text style={styles.error}>{error}</Text>}
         <View style={styles.footer}>
-          <TouchableOpacity onPress={() => { setStep('camera'); setError(null); }}>
-            <Text style={styles.cancelText}>Retake</Text>
+          <TouchableOpacity onPress={handleStartOver}>
+            <Text style={styles.cancelText}>Start Over</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={handleReviewSaveAll}>
+          <TouchableOpacity style={styles.addSectionBtn} onPress={() => { setError(null); setStep('camera'); }}>
+            <Text style={styles.addSectionBtnText}>+ Section</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.saveBtn} onPress={handleReviewSaveAll}>
             <Text style={styles.buttonText}>
-              {unknownQueue.length > 0 ? `Next (${unknownQueue.length} new)` : 'Save All'}
+              {newCount > 0 ? `Save (${newCount} new)` : 'Save All'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -409,6 +455,7 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 20, fontWeight: '700', padding: 16 },
   reviewRow: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -442,6 +489,8 @@ const styles = StyleSheet.create({
   },
   fillBarBg: { height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden', marginTop: 4, marginBottom: 2 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 3 },
+  deleteBtn: { paddingLeft: 12, paddingTop: 2 },
+  deleteBtnText: { color: '#555', fontSize: 16 },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -449,6 +498,21 @@ const styles = StyleSheet.create({
     padding: 16,
     borderTopWidth: 1,
     borderTopColor: '#222',
+  },
+  addSectionBtn: {
+    borderWidth: 1,
+    borderColor: '#444',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  addSectionBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  saveBtn: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
   },
   form: { padding: 24, gap: 12 },
   title: { color: '#fff', fontSize: 24, fontWeight: '700', marginBottom: 4 },
