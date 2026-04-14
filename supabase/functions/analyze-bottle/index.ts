@@ -6,22 +6,34 @@ const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages';
 
 const SINGLE_PROMPT = `You are analyzing a photo of a single liquor bottle for a bar inventory system.
 
-Your ONLY job for fill_pct is to measure the AIR GAP — the empty space at the top of the bottle.
+CRITICAL: fill_pct is the percentage of liquid in the BOTTLE BODY ONLY. Never include the neck.
 
-Step-by-step:
-1. Find the liquid surface line (the meniscus) inside the bottle.
-2. Measure the distance from the liquid surface to the very top of the liquid-containing area (base of the neck).
-3. Express that air gap as a percentage of the cylindrical body height.
-4. fill_pct = 100 minus the air gap percentage.
-5. Round to the nearest 10 (e.g. 35 → 30, 42 → 40).
+Key anatomy:
+- BODY: the wide straight cylindrical section — your measurement zone
+- SHOULDER: where the body ends and begins to taper upward — this is your TOP boundary
+- NECK: the narrow tapered/cylindrical section above the shoulder — completely ignore this
+- BOTTOM: base of the bottle — this is your BOTTOM boundary
 
-Critical calibration:
-- A virtually full bottle (tiny sliver of air) = 90%
-- Liquid fills about 3/4 of the body = 70-75%
-- Liquid fills about half the body = 50%
-- Liquid fills about 1/4 of the body = 20-25%
-- Almost empty (small puddle at bottom) = 10%
-- Do NOT round everything up to 80-100%. Most opened bottles are 20-70%.
+How to measure fill_pct:
+1. Locate the SHOULDER (where taper begins). This = 100% of body.
+2. Locate the BOTTOM of the body. This = 0%.
+3. Locate the LIQUID LINE (the horizontal surface of the liquid) inside the body.
+4. fill_pct = (liquid height from bottom to liquid line) ÷ (total body height from bottom to shoulder) × 100
+5. Round to nearest 10.
+
+Worked examples — burn these into your calibration:
+- Liquid right at the shoulder (body completely full) = 100%
+- Liquid at 9/10 of the body height = 90%
+- Liquid at 3/4 of the body height = 70%
+- Liquid at exactly half the body height = 50%
+- Liquid at 1/4 of the body height = 30%
+- Liquid is a shallow puddle at the bottom = 10%
+- Body is empty = 0%
+
+Common mistakes to avoid:
+- Do NOT measure to the top of the neck — stop at the shoulder
+- Do NOT default to 80-100%; most open bar bottles are 20-70%
+- A bottle that looks "mostly full" in the neck area may only be 50-60% when measured correctly to the shoulder
 
 Return ONLY valid JSON with no markdown, no explanation, no code fences:
 {
@@ -34,21 +46,29 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences:
 
 const SHELF_PROMPT = `You are analyzing a photo of a bar shelf with multiple liquor bottles for an inventory system.
 
-For each bottle, measure the AIR GAP — the empty space at the top of the bottle.
+CRITICAL: fill_pct is the percentage of liquid in the BOTTLE BODY ONLY. Never include the neck.
 
-Step-by-step for each bottle:
-1. Find the liquid surface line (the meniscus) inside the bottle.
-2. Measure the air gap from the liquid surface to the base of the neck as a percentage of the cylindrical body.
-3. fill_pct = 100 minus the air gap percentage.
-4. Round to the nearest 10.
+Key anatomy (apply to every bottle):
+- BODY: the wide straight cylindrical section — your measurement zone
+- SHOULDER: where the body ends and begins to taper upward — TOP boundary
+- NECK: the narrow tapered/cylindrical section above the shoulder — ignore completely
+- BOTTOM: base of the bottle — BOTTOM boundary
 
-Critical calibration:
-- A virtually full bottle = 90%
-- 3/4 full = 70-75%
-- Half full = 50%
-- 1/4 full = 20-25%
-- Almost empty = 10%
-- Do NOT round everything up to 80-100%. Most opened bottles are 20-70%.
+How to measure fill_pct for each bottle:
+1. Locate the SHOULDER (where taper begins). This = 100% of body.
+2. Locate the BOTTOM of the body. This = 0%.
+3. Locate the LIQUID LINE inside the body.
+4. fill_pct = (liquid height from bottom to liquid line) ÷ (body height from bottom to shoulder) × 100
+5. Round to nearest 10.
+
+Calibration:
+- Liquid at shoulder = 100%
+- Liquid at 3/4 body height = 70%
+- Liquid at half body height = 50%
+- Liquid at 1/4 body height = 30%
+- Shallow puddle = 10%
+- Do NOT default to 80-100%; most open bottles are 20-70%
+- A bottle that looks full in the neck may only be 50-60% when measured to the shoulder
 
 Return ONLY valid JSON with no markdown, no explanation, no code fences. An array, one object per visible bottle:
 [
