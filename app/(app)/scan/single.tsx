@@ -325,43 +325,20 @@ export default function SingleScanScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>Confirm Scan</Text>
 
-        {/* Fill % — shown first so it's always visible */}
         <Text style={styles.fillPctDisplay}>{fillPct}%</Text>
-        <Text style={styles.fieldLabel}>Fill % — drag slider to correct</Text>
-        {isWeb ? (
-          // @ts-ignore
-          <input
-            type="range"
-            min="0"
-            max="100"
-            step="5"
-            value={fillPct}
-            onChange={(e: any) => setEditedFillPct(e.target.value)}
-            style={{
-              width: '100%',
-              height: 44,
-              accentColor: '#fff',
-              cursor: 'pointer',
-              backgroundColor: 'transparent',
-            }}
-          />
-        ) : (
-          <View style={styles.pctChips}>
-            {[10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((v) => (
-              <TouchableOpacity
-                key={v}
-                style={[styles.pctChip, fillPct === v && styles.pctChipActive]}
-                onPress={() => setEditedFillPct(String(v))}
-                activeOpacity={0.6}
-              >
-                <Text style={[styles.pctChipText, fillPct === v && styles.pctChipTextActive]}>{v}%</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        <Text style={styles.fieldLabel}>Fill % — type to correct (0–100)</Text>
+        <TextInput
+          style={[styles.input, styles.fillPctInput]}
+          value={editedFillPct}
+          onChangeText={setEditedFillPct}
+          placeholder="e.g. 70"
+          placeholderTextColor="#555"
+          keyboardType="decimal-pad"
+          maxLength={3}
+        />
 
         <View style={styles.fillBarBg}>
-          <View style={[styles.fillBarFg, { width: `${Math.min(fillPct, 100)}%` }]} />
+          <View style={[styles.fillBarFg, { width: `${Math.min(Math.max(fillPct, 0), 100)}%` as any }]} />
         </View>
         <Text style={styles.volumeText}>{volumeMl} ml · {volumeOz} oz remaining</Text>
 
@@ -480,7 +457,8 @@ const styles = StyleSheet.create({
   fillBarBg: { height: 8, backgroundColor: '#333', borderRadius: 4, overflow: 'hidden', marginTop: 4 },
   fillBarFg: { height: '100%', backgroundColor: '#fff', borderRadius: 4 },
   volumeText: { color: '#aaa', fontSize: 14, marginTop: 4 },
-  fillPctDisplay: { color: '#fff', fontSize: 32, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+  fillPctDisplay: { color: '#fff', fontSize: 48, fontWeight: '700', textAlign: 'center', marginBottom: 4 },
+  fillPctInput: { textAlign: 'center', fontSize: 20, fontWeight: '600' },
   pctChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
   pctChip: {
     paddingHorizontal: 14,
