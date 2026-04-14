@@ -61,7 +61,9 @@ Return ONLY valid JSON with no markdown, no explanation, no code fences. An arra
   }
 ]
 
-Include every bottle you can see. If a label is not readable, use your best guess for brand and set known_bottle to false.`;
+Include every bottle you can see. If a label is not readable, use your best guess for brand and set known_bottle to false.
+
+Partially obscured / background bottles: if a bottle is partially hidden behind another bottle and you can identify (or reasonably infer) the brand, assume it is an unopened backup — set fill_pct to 100 and known_bottle to true if identifiable, false if not.`;
 
 function buildCalibrationText(calibrations: Array<{ ai: number; corrected: number }> | undefined): string {
   if (!calibrations || calibrations.length === 0) return '';
