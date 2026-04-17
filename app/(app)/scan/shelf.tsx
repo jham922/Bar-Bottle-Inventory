@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,13 @@ export default function ShelfScanScreen() {
   const [unknownQueue, setUnknownQueue] = useState<number[]>([]);
   const [currentUnknown, setCurrentUnknown] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const calibrationsRef = useRef<{ ai: number; corrected: number }[]>([]);
+
+  // Pre-fetch calibrations while the camera is open so they're ready when a photo is taken
+  useEffect(() => {
+    if (!appUser) return;
+    getRecentCalibrations(appUser.bar_id).then(c => { calibrationsRef.current = c; });
+  }, [appUser]);
 
   async function processCapture(base64: string, mediaType: string, uri: string) {
     if (!appUser) return;
@@ -53,8 +60,7 @@ export default function ShelfScanScreen() {
     setStep('analyzing');
     setError(null);
     try {
-      const calibrations = await getRecentCalibrations(appUser.bar_id);
-      const results = await analyzeBottleImage(base64, 'shelf', mediaType, calibrations) as SingleScanResult[];
+      const results = await analyzeBottleImage(base64, 'shelf', mediaType, calibrationsRef.current) as SingleScanResult[];
 
       const newBottles: DetectedBottle[] = await Promise.all(
         results.map(async (r) => {
@@ -96,7 +102,7 @@ export default function ShelfScanScreen() {
       const img = new window.Image();
       img.onload = () => {
         try {
-          const MAX = 1600;
+          const MAX = 1100;
           let { width, height } = img;
           if (width > MAX || height > MAX) {
             if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
@@ -106,7 +112,7 @@ export default function ShelfScanScreen() {
           canvas.width = width;
           canvas.height = height;
           canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-          const result = canvas.toDataURL('image/jpeg', 0.85);
+          const result = canvas.toDataURL('image/jpeg', 0.75);
           resolve(result.length > 100 ? result : dataUrl);
         } catch {
           resolve(dataUrl);
