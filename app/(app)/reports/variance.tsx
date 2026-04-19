@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
-import { View, Text, TextInput, Pressable, FlatList, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, FlatList, StyleSheet, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { useAppUser } from '@/lib/useAppUser';
+
+const isWeb = Platform.OS === 'web';
 import { getRecipeWithIngredients, getRecipes } from '@/lib/recipes';
 import { parseToastCsv } from '@/lib/toast';
 import { getVarianceReport, VarianceReportItem } from '@/lib/reports';
@@ -20,22 +22,45 @@ export default function VarianceReportScreen() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<VarianceReportItem[] | null>(null);
 
-  async function handlePickCsv() {
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: 'text/csv' });
+  function handlePickCsv() {
+    if (isWeb) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv,text/csv';
+      input.style.display = 'none';
+      input.onchange = (e: any) => {
+        const file = e.target?.files?.[0];
+        document.body.removeChild(input);
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          setCsvText(reader.result as string);
+          setCsvLoaded(true);
+        };
+        reader.onerror = () => Alert.alert('Error', 'Could not read file');
+        reader.readAsText(file);
+      };
+      document.body.appendChild(input);
+      input.click();
+      return;
+    }
+    // Native path
+    DocumentPicker.getDocumentAsync({ type: 'text/csv' }).then(async (result) => {
       if (result.canceled) return;
       const asset = result.assets[0];
-      let text: string;
-      if (asset.uri.startsWith('data:')) {
-        text = atob(asset.uri.split(',')[1]);
-      } else {
-        text = await FileSystem.readAsStringAsync(asset.uri);
+      try {
+        let text: string;
+        if (asset.uri.startsWith('data:')) {
+          text = atob(asset.uri.split(',')[1]);
+        } else {
+          text = await FileSystem.readAsStringAsync(asset.uri);
+        }
+        setCsvText(text);
+        setCsvLoaded(true);
+      } catch (e: any) {
+        Alert.alert('Error', e.message);
       }
-      setCsvText(text);
-      setCsvLoaded(true);
-    } catch (e: any) {
-      Alert.alert('Error', e.message);
-    }
+    }).catch((e: any) => Alert.alert('Error', e.message));
   }
 
   async function handleRun() {
