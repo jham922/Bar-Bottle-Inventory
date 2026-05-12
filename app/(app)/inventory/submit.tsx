@@ -35,7 +35,7 @@ export default function SubmitInventoryScreen() {
   }, [appUser]);
 
   async function handleSubmit() {
-    if (!appUser || bottles.length === 0) return;
+    if (!appUser || bottles.length === 0 || submitting) return;
     setSubmitting(true);
     try {
       await submitInventoryCount(appUser.bar_id, appUser.id, bottles);
@@ -80,9 +80,9 @@ export default function SubmitInventoryScreen() {
           />
 
           <Pressable
-            style={[styles.btn, submitting && styles.btnDisabled]}
+            style={[styles.btn, (submitting || bottles.length === 0) && styles.btnDisabled]}
             onPress={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || bottles.length === 0}
           >
             <Text style={styles.btnText}>
               {submitting ? 'Submitting…' : 'Confirm & Submit'}
