@@ -84,6 +84,7 @@ Fill % is always editable before saving. The AI estimate is a starting point onl
 - **CRLF on Windows** — Git warns about LF→CRLF on `dist/` files. This is harmless.
 - **Do not add a `buildCommand` to `vercel.json`** — Vercel should serve `dist/` as-is, not rebuild.
 - **Do not use raw HTML elements** (`<input>`, `<button>`) in React Native JSX — they cause silent rendering failures in Expo's static export. Use React Native components only.
+- **CSV export on web** — `expo-sharing` and `expo-file-system` are native-only and silently do nothing in a browser. `shareCsv` in `lib/export.ts` handles this with a `Platform.OS === 'web'` branch that creates a Blob URL and triggers a browser download. Never call `expo-sharing` directly from app code.
 - **RLS + insert subqueries** — if an insert policy uses a subquery against another RLS-protected table, that subquery also runs under RLS. Staff need a SELECT policy on any table referenced in those subqueries or inserts will silently fail. See `inventory_sessions: own select` policy as the example.
 - **History tab is admin-only** — uses `href: isAdmin ? undefined : null` pattern in `app/(app)/_layout.tsx`, same as the Settings tab.
 - **Inventory submit button disabled state** — disabled when `bottles.length === 0` (no scans since last count) OR while submitting. Both conditions must be checked.
