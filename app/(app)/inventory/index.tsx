@@ -5,6 +5,7 @@ import {
   TextInput,
   FlatList,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
@@ -44,7 +45,12 @@ export default function InventoryScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Inventory</Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.title}>Inventory</Text>
+        <Pressable style={styles.submitBtn} onPress={() => router.push('/(app)/inventory/submit')}>
+          <Text style={styles.submitBtnText}>Submit Count</Text>
+        </Pressable>
+      </View>
 
       <TextInput
         style={styles.searchInput}
@@ -126,7 +132,24 @@ export default function InventoryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#111' },
-  title: { color: '#fff', fontSize: 24, fontWeight: '700', padding: 16, paddingBottom: 8 },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  title: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  submitBtn: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  submitBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   searchInput: {
     backgroundColor: '#1e1e1e',
     borderWidth: 1,
