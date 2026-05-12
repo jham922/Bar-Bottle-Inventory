@@ -26,13 +26,14 @@ export interface PendingBottle {
 
 // Returns the most recent session for this bar, or null if none exists
 export async function getLastSession(barId: string): Promise<InventorySession | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('inventory_sessions')
     .select('*')
     .eq('bar_id', barId)
     .order('submitted_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as InventorySession) ?? null;
 }
 
