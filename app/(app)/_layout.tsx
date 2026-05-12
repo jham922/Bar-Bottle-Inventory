@@ -16,11 +16,15 @@ export default function AppLayout() {
       <Tabs.Screen name="index" options={{ title: 'Home' }} />
       <Tabs.Screen name="scan/index" options={{ title: 'Scan' }} />
       <Tabs.Screen name="inventory/index" options={{ title: 'Inventory' }} />
+      <Tabs.Screen name="history/index" options={{ title: 'History', href: isAdmin ? undefined : null }} />
       <Tabs.Screen name="settings/index" options={{ title: 'Settings', href: isAdmin ? undefined : null }} />
 
+      {/* Hidden screens — not shown in tab bar */}
       <Tabs.Screen name="scan/single" options={{ href: null }} />
       <Tabs.Screen name="scan/shelf" options={{ href: null }} />
       <Tabs.Screen name="inventory/[id]" options={{ href: null }} />
+      <Tabs.Screen name="inventory/submit" options={{ href: null }} />
+      <Tabs.Screen name="history/[id]" options={{ href: null }} />
       <Tabs.Screen name="recipes/index" options={{ href: null }} />
       <Tabs.Screen name="recipes/new" options={{ href: null }} />
       <Tabs.Screen name="recipes/[id]" options={{ href: null }} />
