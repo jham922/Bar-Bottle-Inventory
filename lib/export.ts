@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { BottleWithLatestScan } from './inventory';
 import { ConsumptionReportItem, VarianceReportItem } from './reports';
+import { InventorySessionEntry } from '@/types/database';
 
 export function buildInventoryCsv(items: BottleWithLatestScan[]): string {
   const header = 'Brand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Last Scanned';
@@ -25,6 +26,22 @@ export function buildVarianceCsv(items: VarianceReportItem[], dateStart: string,
   const header = `Variance Report: ${dateStart} to ${dateEnd}\nBrand,Theoretical (ml),Actual (ml),Difference (ml),Variance %,Flagged`;
   const rows = items.map(i =>
     [i.brand, i.theoretical_ml, i.actual_ml, i.diff_ml, `${i.variance_pct}%`, i.flagged ? 'YES' : 'no'].join(',')
+  );
+  return [header, ...rows].join('\n');
+}
+
+export function buildHistoryCsv(entries: InventorySessionEntry[], submittedAt: string): string {
+  const dateLabel = new Date(submittedAt).toLocaleString();
+  const header = `Inventory Count: ${dateLabel}\nBrand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Scanned At`;
+  const rows = entries.map(e =>
+    [
+      e.brand,
+      e.spirit_type,
+      e.total_volume_ml,
+      e.fill_pct,
+      e.volume_remaining_ml,
+      new Date(e.scanned_at).toLocaleString(),
+    ].join(',')
   );
   return [header, ...rows].join('\n');
 }

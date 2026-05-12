@@ -1,4 +1,4 @@
-import { buildInventoryCsv, buildConsumptionCsv, buildVarianceCsv } from '@/lib/export';
+import { buildInventoryCsv, buildConsumptionCsv, buildVarianceCsv, buildHistoryCsv } from '@/lib/export';
 
 jest.mock('expo-print', () => ({}));
 jest.mock('expo-sharing', () => ({}));
@@ -23,5 +23,29 @@ describe('buildVarianceCsv', () => {
     const csv = buildVarianceCsv(items as any, '2026-04-01', '2026-04-07');
     expect(csv).toContain('Flagged');
     expect(csv).toContain('YES');
+  });
+});
+
+describe('buildHistoryCsv', () => {
+  it('includes header line with submitted date and column headers', () => {
+    const entries: any[] = [];
+    const csv = buildHistoryCsv(entries, '2026-05-12T21:14:00.000Z');
+    expect(csv).toContain('Inventory Count:');
+    expect(csv).toContain('Brand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Scanned At');
+  });
+
+  it('includes one row per entry with correct values', () => {
+    const entries: any[] = [
+      {
+        brand: 'Bulleit Bourbon',
+        spirit_type: 'Whiskey',
+        total_volume_ml: 750,
+        fill_pct: 82,
+        volume_remaining_ml: 615,
+        scanned_at: '2026-05-12T09:00:00.000Z',
+      },
+    ];
+    const csv = buildHistoryCsv(entries, '2026-05-12T21:14:00.000Z');
+    expect(csv).toContain('Bulleit Bourbon,Whiskey,750,82,615');
   });
 });
