@@ -11,6 +11,7 @@ A web app for tracking bar bottle inventory. Scan bottles, monitor fill levels, 
 - **Inventory list** — browse all bottles with fill bars, search, and filter by spirit type
 - **Bottle detail** — scan history, fill trend, low-stock alert threshold, delete
 - **Low-stock alerts** — set a threshold (ml) per bottle; flagged in inventory when stock runs low
+- **Inventory history** — submit a completed count to save a point-in-time snapshot; admins can browse past counts by date, view per-bottle fill levels, and export any count to CSV; records auto-delete after 6 months
 - **Consumption reports** — variance and consumption analytics over time
 - **Team management** — invite staff, manage roles (admin / staff)
 - **Toast POS import** — import bottle data from Toast CSV exports
@@ -55,5 +56,5 @@ Migrations are in `supabase/migrations/`. Run them in order via the Supabase SQL
 
 | Role | Permissions |
 |------|------------|
-| `admin` | Full access — add/edit/delete bottles, manage team, set alerts |
-| `staff` | Scan bottles, view inventory and reports |
+| `admin` | Full access — add/edit/delete bottles, manage team, set alerts, view inventory history |
+| `staff` | Scan bottles, view inventory and reports, submit inventory counts |

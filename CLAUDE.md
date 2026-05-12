@@ -49,9 +49,14 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 | `lib/supabase.ts` | Supabase client (hardcoded fallback credentials + `.trim()`) |
 | `lib/inventory.ts` | Inventory list queries |
 | `lib/scan.ts` | Scan utilities (ml/oz conversion, etc.) |
+| `lib/history.ts` | Inventory history queries — `getLastSession`, `getPendingBottles`, `submitInventoryCount`, `getInventorySessions`, `getSession`, `getInventorySessionEntries`, `filterLatestScansPerBottle` |
+| `lib/export.ts` | CSV export — `buildHistoryCsv()` for session entries, `shareCsv()` for native share sheet |
 | `app/_layout.tsx` | Root layout — seeds auth state from `getSession()` on load to prevent blank screen on refresh |
 | `app/(app)/inventory/index.tsx` | Inventory list — reloads on focus via `useFocusEffect` so deleted bottles disappear immediately |
 | `app/(app)/inventory/[id].tsx` | Bottle detail + delete — uses `.maybeSingle()` not `.single()` |
+| `app/(app)/inventory/submit.tsx` | Submit count confirmation screen — shows pending bottles since last count |
+| `app/(app)/history/index.tsx` | History list screen (admin-only tab) — all sessions newest first |
+| `app/(app)/history/[id].tsx` | History detail screen — bottle snapshot with fill bars + Export CSV |
 | `app/(app)/scan/single.tsx` | Single bottle scan + confirm screen — fill %, brand, spirit type, size all editable |
 | `app/(app)/scan/shelf.tsx` | Shelf scan — review list with per-bottle editable fill % input |
 | `supabase/functions/analyze-bottle/index.ts` | Claude Vision edge function for bottle analysis |
@@ -79,3 +84,6 @@ Fill % is always editable before saving. The AI estimate is a starting point onl
 - **CRLF on Windows** — Git warns about LF→CRLF on `dist/` files. This is harmless.
 - **Do not add a `buildCommand` to `vercel.json`** — Vercel should serve `dist/` as-is, not rebuild.
 - **Do not use raw HTML elements** (`<input>`, `<button>`) in React Native JSX — they cause silent rendering failures in Expo's static export. Use React Native components only.
+- **RLS + insert subqueries** — if an insert policy uses a subquery against another RLS-protected table, that subquery also runs under RLS. Staff need a SELECT policy on any table referenced in those subqueries or inserts will silently fail. See `inventory_sessions: own select` policy as the example.
+- **History tab is admin-only** — uses `href: isAdmin ? undefined : null` pattern in `app/(app)/_layout.tsx`, same as the Settings tab.
+- **Inventory submit button disabled state** — disabled when `bottles.length === 0` (no scans since last count) OR while submitting. Both conditions must be checked.
