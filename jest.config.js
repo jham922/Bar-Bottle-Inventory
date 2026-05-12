@@ -1,6 +1,7 @@
 module.exports = {
   setupFiles: ['./jest.setup.js'],
   testEnvironment: 'node',
+  testPathIgnorePatterns: ['/node_modules/', '/.worktrees/'],
   transform: {
     '^.+\.(js|ts|tsx)$': 'babel-jest',
   },
