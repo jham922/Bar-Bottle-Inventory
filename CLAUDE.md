@@ -49,8 +49,8 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=<anon key>
 | `lib/supabase.ts` | Supabase client (hardcoded fallback credentials + `.trim()`) |
 | `lib/inventory.ts` | Inventory list queries |
 | `lib/scan.ts` | Scan utilities (ml/oz conversion, etc.) |
-| `lib/history.ts` | Inventory history queries — `getLastSession`, `getPendingBottles`, `submitInventoryCount`, `getInventorySessions`, `getSession`, `getInventorySessionEntries`, `filterLatestScansPerBottle` |
-| `lib/export.ts` | CSV export — `buildHistoryCsv()` for session entries, `shareCsv()` for native share sheet |
+| `lib/history.ts` | Inventory history queries — `getLastSession`, `getPendingBottles`, `submitInventoryCount`, `getInventorySessions`, `getSession`, `getInventorySessionEntries`, `filterLatestScansPerBottle`, `aggregateSessionEntries` (groups same-product bottles into decimal counts) |
+| `lib/export.ts` | CSV export — `buildHistoryCsv()` for aggregated session entries, `shareCsv()` triggers browser download on web via Blob URL; native path uses expo-sharing via dynamic import |
 | `app/_layout.tsx` | Root layout — seeds auth state from `getSession()` on load to prevent blank screen on refresh |
 | `app/(app)/inventory/index.tsx` | Inventory list — reloads on focus via `useFocusEffect` so deleted bottles disappear immediately |
 | `app/(app)/inventory/[id].tsx` | Bottle detail + delete — uses `.maybeSingle()` not `.single()` |
