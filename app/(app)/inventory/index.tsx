@@ -9,11 +9,12 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAppUser } from '@/lib/useAppUser';
-import { getInventoryList, SPIRIT_TYPES, BottleWithLatestScan } from '@/lib/inventory';
+import { getInventoryList, clearAllScans, SPIRIT_TYPES, BottleWithLatestScan } from '@/lib/inventory';
 import { mlToOz } from '@/lib/scan';
 
 export default function InventoryScreen() {
@@ -43,13 +44,43 @@ export default function InventoryScreen() {
 
   useFocusEffect(useCallback(() => { loadBottles(); }, [loadBottles]));
 
+  function handleClearAll() {
+    if (!appUser) return;
+    Alert.alert(
+      'Clear All Scans',
+      'This will delete all scan data for every bottle. Submitted history counts are not affected. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearAllScans(appUser.bar_id);
+              loadBottles();
+            } catch (e: any) {
+              Alert.alert('Error', e.message);
+            }
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.titleRow}>
         <Text style={styles.title}>Inventory</Text>
-        <Pressable style={styles.submitBtn} onPress={() => router.push('/(app)/inventory/submit')}>
-          <Text style={styles.submitBtnText}>Submit Count</Text>
-        </Pressable>
+        <View style={styles.titleActions}>
+          {appUser?.role === 'admin' && (
+            <Pressable style={styles.clearBtn} onPress={handleClearAll}>
+              <Text style={styles.clearBtnText}>Clear All</Text>
+            </Pressable>
+          )}
+          <Pressable style={styles.submitBtn} onPress={() => router.push('/(app)/inventory/submit')}>
+            <Text style={styles.submitBtnText}>Submit Count</Text>
+          </Pressable>
+        </View>
       </View>
 
       <TextInput
@@ -141,6 +172,16 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   title: { color: '#fff', fontSize: 24, fontWeight: '700' },
+  titleActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  clearBtn: {
+    backgroundColor: '#7f1d1d',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#991b1b',
+  },
+  clearBtnText: { color: '#fca5a5', fontSize: 13, fontWeight: '600' },
   submitBtn: {
     backgroundColor: '#1e1e1e',
     borderRadius: 8,

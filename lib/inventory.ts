@@ -46,6 +46,23 @@ export async function getInventoryList(
   return results;
 }
 
+// Deletes all inventory_scans for this bar. Does not touch inventory_sessions or history.
+export async function clearAllScans(barId: string): Promise<void> {
+  const { data: bottles, error: bottlesError } = await supabase
+    .from('bottles')
+    .select('id')
+    .eq('bar_id', barId);
+  if (bottlesError) throw bottlesError;
+  if (!bottles || bottles.length === 0) return;
+
+  const ids = (bottles as { id: string }[]).map(b => b.id);
+  const { error } = await supabase
+    .from('inventory_scans')
+    .delete()
+    .in('bottle_id', ids);
+  if (error) throw error;
+}
+
 export async function getBottleHistory(bottleId: string): Promise<InventoryScan[]> {
   const { data, error } = await supabase
     .from('inventory_scans')
