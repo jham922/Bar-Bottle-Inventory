@@ -14,36 +14,41 @@ export async function getInventoryList(
   search?: string,
   spiritType?: string,
 ): Promise<BottleWithLatestScan[]> {
-  // Fetch all bottles for this bar
+  // Query 1: all bottles for the bar (with optional filters)
   let query = supabase.from('bottles').select('*').eq('bar_id', barId).order('brand');
   if (spiritType) query = query.eq('spirit_type', spiritType);
   if (search) query = query.ilike('brand', `%${search}%`);
 
-  const { data: bottles, error } = await query;
-  if (error) throw error;
+  const { data: bottles, error: bottlesError } = await query;
+  if (bottlesError) throw bottlesError;
   if (!bottles || bottles.length === 0) return [];
 
-  // For each bottle, get its latest scan
-  const results: BottleWithLatestScan[] = await Promise.all(
-    (bottles as Bottle[]).map(async (bottle) => {
-      const { data: latestScan } = await supabase
-        .from('inventory_scans')
-        .select('fill_pct, volume_remaining_ml, scanned_at')
-        .eq('bottle_id', bottle.id)
-        .order('scanned_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  // Query 2: all scans for those bottles in one request, newest first
+  const bottleIds = (bottles as Bottle[]).map(b => b.id);
+  const { data: scans, error: scansError } = await supabase
+    .from('inventory_scans')
+    .select('bottle_id, fill_pct, volume_remaining_ml, scanned_at')
+    .in('bottle_id', bottleIds)
+    .order('scanned_at', { ascending: false });
+  if (scansError) throw scansError;
 
-      return {
-        ...bottle,
-        fill_pct: latestScan?.fill_pct ?? null,
-        volume_remaining_ml: latestScan?.volume_remaining_ml ?? null,
-        scanned_at: latestScan?.scanned_at ?? null,
-      };
-    })
-  );
+  // Build map: bottle_id → latest scan (first occurrence wins since rows are sorted desc)
+  const latestByBottle = new Map<string, { fill_pct: number; volume_remaining_ml: number; scanned_at: string }>();
+  for (const scan of (scans ?? []) as any[]) {
+    if (!latestByBottle.has(scan.bottle_id)) {
+      latestByBottle.set(scan.bottle_id, scan);
+    }
+  }
 
-  return results;
+  return (bottles as Bottle[]).map(bottle => {
+    const latest = latestByBottle.get(bottle.id);
+    return {
+      ...bottle,
+      fill_pct: latest?.fill_pct ?? null,
+      volume_remaining_ml: latest?.volume_remaining_ml ?? null,
+      scanned_at: latest?.scanned_at ?? null,
+    };
+  });
 }
 
 // Deletes all inventory_scans for this bar. Does not touch inventory_sessions or history.
