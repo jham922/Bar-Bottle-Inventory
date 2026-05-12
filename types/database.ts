@@ -96,3 +96,23 @@ export interface Invite {
   expires_at: string;
   accepted_at: string | null;
 }
+
+export interface InventorySession {
+  id: string;
+  bar_id: string;
+  submitted_by: string;
+  submitted_at: string;
+  bottle_count: number;
+}
+
+export interface InventorySessionEntry {
+  id: string;
+  session_id: string;
+  bottle_id: string | null;
+  brand: string;
+  spirit_type: string;
+  total_volume_ml: number;
+  fill_pct: number;
+  volume_remaining_ml: number;
+  scanned_at: string;
+}
