@@ -4,8 +4,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
-import { getSession, getInventorySessionEntries, SessionWithMeta } from '@/lib/history';
-import { InventorySessionEntry } from '@/types/database';
+import { getSession, getInventorySessionEntries, aggregateSessionEntries, SessionWithMeta, AggregatedEntry } from '@/lib/history';
 import { buildHistoryCsv, shareCsv } from '@/lib/export';
 import { mlToOz } from '@/lib/scan';
 
@@ -13,7 +12,7 @@ export default function HistoryDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const appUser = useAppUser();
   const [session, setSession] = useState<SessionWithMeta | null>(null);
-  const [entries, setEntries] = useState<InventorySessionEntry[]>([]);
+  const [entries, setEntries] = useState<AggregatedEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +25,7 @@ export default function HistoryDetailScreen() {
           getInventorySessionEntries(id),
         ]);
         setSession(foundSession);
-        setEntries(foundEntries);
+        setEntries(aggregateSessionEntries(foundEntries));
       } catch (e: any) {
         setError(e.message ?? 'Failed to load');
       } finally {
@@ -65,18 +64,19 @@ export default function HistoryDetailScreen() {
       ) : (
         <FlatList
           data={entries}
-          keyExtractor={e => e.id}
+          keyExtractor={e => `${e.brand}||${e.spirit_type}||${e.total_volume_ml}`}
           renderItem={({ item }) => {
-            const fillPct = item.fill_pct ?? 0;
+            const bottleCount = parseFloat(item.bottle_count.toFixed(1));
+            const label = bottleCount === 1 ? 'bottle' : 'bottles';
             return (
               <View style={styles.row}>
                 <Text style={styles.brand}>{item.brand}</Text>
                 <Text style={styles.detail}>{item.spirit_type} · {item.total_volume_ml}ml</Text>
                 <View style={styles.fillBarBg}>
-                  <View style={[styles.fillBarFg, { width: `${Math.min(fillPct, 100)}%` }]} />
+                  <View style={[styles.fillBarFg, { width: `${Math.min(item.avg_fill_pct, 100)}%` }]} />
                 </View>
                 <Text style={styles.detail}>
-                  {fillPct}% · {item.volume_remaining_ml}ml · {mlToOz(item.volume_remaining_ml)}oz
+                  {bottleCount} {label} · {Math.round(item.volume_remaining_ml)}ml · {mlToOz(item.volume_remaining_ml)}oz
                 </Text>
               </View>
             );

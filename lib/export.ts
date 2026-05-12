@@ -3,7 +3,7 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system';
 import { BottleWithLatestScan } from './inventory';
 import { ConsumptionReportItem, VarianceReportItem } from './reports';
-import { InventorySessionEntry } from '@/types/database';
+import { AggregatedEntry } from '@/lib/history';
 
 export function buildInventoryCsv(items: BottleWithLatestScan[]): string {
   const header = 'Brand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Last Scanned';
@@ -30,17 +30,16 @@ export function buildVarianceCsv(items: VarianceReportItem[], dateStart: string,
   return [header, ...rows].join('\n');
 }
 
-export function buildHistoryCsv(entries: InventorySessionEntry[], submittedAt: string): string {
+export function buildHistoryCsv(entries: AggregatedEntry[], submittedAt: string): string {
   const dateLabel = new Date(submittedAt).toLocaleString();
-  const header = `Inventory Count: ${dateLabel}\nBrand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Scanned At`;
+  const header = `Inventory Count: ${dateLabel}\nBrand,Spirit Type,Bottle Size (ml),Bottles,Remaining (ml)`;
   const rows = entries.map(e =>
     [
       e.brand,
       e.spirit_type,
       e.total_volume_ml,
-      e.fill_pct,
-      e.volume_remaining_ml,
-      new Date(e.scanned_at).toLocaleString(),
+      parseFloat(e.bottle_count.toFixed(1)),
+      Math.round(e.volume_remaining_ml),
     ].join(',')
   );
   return [header, ...rows].join('\n');

@@ -151,3 +151,37 @@ export async function getInventorySessionEntries(sessionId: string): Promise<Inv
   if (error) throw error;
   return (data ?? []) as InventorySessionEntry[];
 }
+
+export interface AggregatedEntry {
+  brand: string;
+  spirit_type: string;
+  total_volume_ml: number;
+  bottle_count: number;        // sum(fill_pct) / 100 — e.g. 2.5 for 3 bottles at 50%, 100%, 100%
+  volume_remaining_ml: number; // sum across all bottles in the group
+  avg_fill_pct: number;        // average fill per bottle, for the fill bar
+}
+
+// Groups entries by (brand, spirit_type, total_volume_ml) and sums fills into bottle equivalents.
+// Input order is preserved per group; output is sorted by brand.
+export function aggregateSessionEntries(entries: InventorySessionEntry[]): AggregatedEntry[] {
+  const groups = new Map<string, InventorySessionEntry[]>();
+  for (const entry of entries) {
+    const key = `${entry.brand}||${entry.spirit_type}||${entry.total_volume_ml}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(entry);
+  }
+  return Array.from(groups.values())
+    .map(group => {
+      const first = group[0];
+      const totalFillPct = group.reduce((sum, e) => sum + e.fill_pct, 0);
+      return {
+        brand: first.brand,
+        spirit_type: first.spirit_type,
+        total_volume_ml: first.total_volume_ml,
+        bottle_count: totalFillPct / 100,
+        volume_remaining_ml: group.reduce((sum, e) => sum + e.volume_remaining_ml, 0),
+        avg_fill_pct: totalFillPct / group.length,
+      };
+    })
+    .sort((a, b) => a.brand.localeCompare(b.brand));
+}

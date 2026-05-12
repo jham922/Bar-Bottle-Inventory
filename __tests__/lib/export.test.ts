@@ -27,25 +27,25 @@ describe('buildVarianceCsv', () => {
 });
 
 describe('buildHistoryCsv', () => {
-  it('includes header line with submitted date and column headers', () => {
+  it('includes header line with submitted date and aggregated column headers', () => {
     const entries: any[] = [];
     const csv = buildHistoryCsv(entries, '2026-05-12T21:14:00.000Z');
     expect(csv).toContain('Inventory Count:');
-    expect(csv).toContain('Brand,Spirit Type,Bottle Size (ml),Fill %,Remaining (ml),Scanned At');
+    expect(csv).toContain('Brand,Spirit Type,Bottle Size (ml),Bottles,Remaining (ml)');
   });
 
-  it('includes one row per entry with correct values', () => {
+  it('formats aggregated bottle count and total remaining ml', () => {
     const entries: any[] = [
       {
-        brand: 'Bulleit Bourbon',
+        brand: "Maker's Mark",
         spirit_type: 'Whiskey',
         total_volume_ml: 750,
-        fill_pct: 82,
-        volume_remaining_ml: 615,
-        scanned_at: '2026-05-12T09:00:00.000Z',
+        bottle_count: 2.5,
+        volume_remaining_ml: 1875,
+        avg_fill_pct: 83.33,
       },
     ];
     const csv = buildHistoryCsv(entries, '2026-05-12T21:14:00.000Z');
-    expect(csv).toContain('Bulleit Bourbon,Whiskey,750,82,615');
+    expect(csv).toContain("Maker's Mark,Whiskey,750,2.5,1875");
   });
 });
