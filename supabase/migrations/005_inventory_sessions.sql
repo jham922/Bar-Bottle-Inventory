@@ -32,6 +32,10 @@ create policy "sessions: any insert" on inventory_sessions for insert
 create policy "sessions: admin select" on inventory_sessions for select
   using (current_user_role() = 'admin' and bar_id = current_bar_id());
 
+-- Staff can read their own sessions (needed for session_entries insert policy subquery)
+create policy "sessions: own select" on inventory_sessions for select
+  using (submitted_by = auth.uid() and bar_id = current_bar_id());
+
 -- Any bar member can insert entries into sessions that belong to their bar
 create policy "session_entries: any insert" on inventory_session_entries for insert
   with check (
