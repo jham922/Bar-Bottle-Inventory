@@ -1,6 +1,5 @@
 import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
-import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { BottleWithLatestScan } from './inventory';
 import { ConsumptionReportItem, VarianceReportItem } from './reports';
 import { AggregatedEntry } from '@/lib/history';
@@ -46,9 +45,21 @@ export function buildHistoryCsv(entries: AggregatedEntry[], submittedAt: string)
 }
 
 export async function shareCsv(csvContent: string, filename: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    return;
+  }
+  const { default: FileSystem } = await import('expo-file-system');
+  const { shareAsync } = await import('expo-sharing');
   const path = `${FileSystem.cacheDirectory}${filename}`;
   await FileSystem.writeAsStringAsync(path, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
-  await Sharing.shareAsync(path, { mimeType: 'text/csv', dialogTitle: filename });
+  await shareAsync(path, { mimeType: 'text/csv', dialogTitle: filename });
 }
 
 export async function printReport(htmlContent: string): Promise<void> {

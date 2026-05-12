@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-  View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator,
+  View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator, Alert,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useAppUser } from '@/lib/useAppUser';
@@ -36,9 +36,13 @@ export default function HistoryDetailScreen() {
 
   async function handleExport() {
     if (!session) return;
-    const csv = buildHistoryCsv(entries, session.submitted_at);
-    const date = new Date(session.submitted_at).toISOString().slice(0, 10);
-    await shareCsv(csv, `inventory-${date}.csv`);
+    try {
+      const csv = buildHistoryCsv(entries, session.submitted_at);
+      const date = new Date(session.submitted_at).toISOString().slice(0, 10);
+      await shareCsv(csv, `inventory-${date}.csv`);
+    } catch (e: any) {
+      Alert.alert('Export failed', e.message);
+    }
   }
 
   const titleLabel = session

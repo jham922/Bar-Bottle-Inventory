@@ -1,12 +1,6 @@
 import { buildInventoryCsv, buildConsumptionCsv, buildVarianceCsv, buildHistoryCsv } from '@/lib/export';
 
 jest.mock('expo-print', () => ({}));
-jest.mock('expo-sharing', () => ({}));
-jest.mock('expo-file-system', () => ({
-  cacheDirectory: '/tmp/',
-  writeAsStringAsync: jest.fn(),
-  EncodingType: { UTF8: 'utf8' },
-}));
 
 describe('buildInventoryCsv', () => {
   it('produces correct CSV headers and rows', () => {
