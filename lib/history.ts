@@ -121,12 +121,13 @@ export async function getInventorySessions(barId: string): Promise<SessionWithMe
 
 // Returns a single session by id, with submitter name
 export async function getSession(sessionId: string): Promise<SessionWithMeta | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('inventory_sessions')
     .select('*, users(display_name)')
     .eq('id', sessionId)
     .maybeSingle();
 
+  if (error) throw error;
   if (!data) return null;
   const s = data as any;
   return {
