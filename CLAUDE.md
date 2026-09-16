@@ -88,3 +88,13 @@ Fill % is always editable before saving. The AI estimate is a starting point onl
 - **RLS + insert subqueries** — if an insert policy uses a subquery against another RLS-protected table, that subquery also runs under RLS. Staff need a SELECT policy on any table referenced in those subqueries or inserts will silently fail. See `inventory_sessions: own select` policy as the example.
 - **History tab is admin-only** — uses `href: isAdmin ? undefined : null` pattern in `app/(app)/_layout.tsx`, same as the Settings tab.
 - **Inventory submit button disabled state** — disabled when `bottles.length === 0` (no scans since last count) OR while submitting. Both conditions must be checked.
+
+
+## Current state (maintained by the Hermes assistant)
+
+- **Status and next steps:** `docs/PROJECT-STATUS.md` — read this before starting work.
+- **Change log:** `docs/CHANGES.md` — append one dated line after every work session,
+  whoever did the work (Claude Code or Hermes). This is the handoff between tools.
+- Server-side automation (scheduled jobs, vendor-portal pulls, databases) is **not** in
+  this repo — it lives on the Hermes host. Nothing here should assume it is visible.
+- Never commit credentials. Portal logins and API keys stay server-side.
