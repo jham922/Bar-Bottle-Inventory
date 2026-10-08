@@ -1,6 +1,6 @@
 # Project status — bar-bottle-inventory
 
-_Maintained jointly. Last updated 2026-10-07 by the Hermes assistant._
+_Maintained jointly. Last updated 2026-10-08 by the Hermes assistant._
 _Read `docs/CHANGES.md` for the running log; append a line there after any session._
 
 ## 3. bar-bottle-inventory — photo bottle inventory
